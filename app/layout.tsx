@@ -5,6 +5,10 @@ import AppShell from '@/components/AppShell';
 export const metadata: Metadata = {
   title: 'Solocontrol Lab',
   description: 'Gestão de ensaios, fichas e rastreabilidade da Solocontrol',
+  icons: {
+    icon: '/logo-solocontrol-icon.png',
+    apple: '/logo-solocontrol-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

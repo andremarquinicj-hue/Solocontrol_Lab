@@ -1,106 +1,95 @@
-# Solocontrol Lab v0.1
+# Solocontrol Lab v0.1.3
 
-Primeira versão funcional do sistema gerencial de laboratório da Solocontrol.
+Versão de teste do sistema gerencial de laboratório da Solocontrol.
 
-## O que já está nesta versão
+## Atualizações desta versão
 
-- Dashboard gerencial com rupturas do dia, atrasados, 7/14/28 dias e fichas ativas.
-- Delegação de ruptura para laboratoristas pelo dashboard.
-- Lançamento rápido de ficha em 4 passos.
-- Datas de ruptura calculadas automaticamente.
-- Geração automática dos identificadores individuais dos CPs a partir da etiqueta base.
-- Fotos obrigatórias no cadastro: ficha, coleta/amostra e etiqueta.
-- Rastreabilidade da amostra em linha do tempo.
-- Fotos obrigatórias na ruptura: rompimento, prensa e CP final.
-- Lançamento de carga da prensa e cálculo preliminar de resistência à compressão.
-- Movimentação automática do local físico da ficha conforme a próxima ruptura.
-- Cadastro de obras e equipe.
+- Logo oficial da Solocontrol atualizada no menu, relatórios e ícone do sistema.
+- Opção **Excluir ficha** adicionada em:
+  - `Amostras / Ensaios`
+  - tela de rastreabilidade da própria ficha.
+- A exclusão exige confirmação antes de prosseguir.
+- Ao excluir uma ficha conectada ao Firebase, o sistema tenta remover:
+  - documento da coleção `samples`;
+  - fotos iniciais da ficha;
+  - fotos das rupturas.
+- `storage.rules` atualizado para permitir exclusão de arquivos por usuário autenticado.
+- Correção de tipagem da tela de ruptura mantida nesta versão.
+- Fotos continuam obrigatórias no cadastro e em cada etapa de ruptura.
+
+## Funcionalidades atuais
+
+- Dashboard gerencial.
+- Agenda automática de rupturas.
+- Controle de 7, 14 e 28 dias e outras idades configuráveis.
+- Delegação de ensaios para a equipe.
+- Lançamento rápido em 4 etapas.
+- Fotos obrigatórias:
+  - ficha;
+  - coleta/amostra;
+  - etiqueta;
+  - rompimento;
+  - prensa;
+  - CP final.
+- Rastreabilidade por amostra.
+- Localização física da ficha.
+- Cadastro de obras.
+- Cadastro da equipe.
+- Calculadora preliminar de resistência à compressão.
 - Relatório gerencial imprimível.
-- Modo demonstração com localStorage quando o Firebase ainda não foi configurado.
-- Integração preparada para Firestore e Firebase Storage.
+- Integração com Firebase Authentication, Firestore e Storage.
+- Modo local para testes quando o Firebase não estiver configurado.
 
-## 1. Rodar localmente
+## Subir no GitHub
 
-```bash
-npm install
-npm run dev
+Extraia o ZIP e envie **todo o conteúdo** para a raiz do repositório.
+
+Os principais arquivos/pastas devem ficar assim:
+
+```text
+app/
+components/
+lib/
+public/
+.env.example
+.gitignore
+firebase.json
+firestore.rules
+next.config.mjs
+package.json
+storage.rules
+tsconfig.json
 ```
 
-Abra `http://localhost:3000`.
+Não envie `.env.local` para o GitHub.
 
-Sem Firebase configurado o sistema funciona em **modo demonstração**, armazenando dados no navegador.
+## Variáveis do Vercel
 
-## 2. Configurar Firebase
+Mantenha estas variáveis em `Vercel > Settings > Environment Variables`:
 
-Crie um projeto no Firebase e ative:
-
-- Firestore Database
-- Storage
-- Authentication → habilite **Anonymous** para o piloto da v0.1. O sistema autentica automaticamente. Na v0.2 trocaremos isso por login nominal e perfis.
-
-Copie `.env.example` para `.env.local` e preencha as chaves do aplicativo Web do Firebase.
-
-```bash
-cp .env.example .env.local
+```text
+NEXT_PUBLIC_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+NEXT_PUBLIC_FIREBASE_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID
 ```
 
-### Coleções usadas
+## Atenção: regras do Firebase Storage
 
-- `samples`
-- `works`
-- `team`
+Como esta versão permite excluir fichas e também tenta apagar as imagens vinculadas, copie o conteúdo do arquivo `storage.rules` para:
 
-### Regras
+`Firebase > Storage > Regras`
 
-Arquivos incluídos:
+e clique em **Publicar**.
 
-- `firestore.rules`
-- `storage.rules`
+O Firestore continua usando o arquivo `firestore.rules`.
 
-Antes de produção, as regras devem ser refinadas por perfil (Administrador, Coordenador, Laboratorista e Engenheiro/Aprovador).
+## Segurança
 
-## 3. GitHub
+O login anônimo está sendo usado somente no piloto. Antes do uso definitivo, o sistema deverá ter perfis nominais e permissões separadas para Administrador, Coordenador, Laboratorista e Engenheiro/Aprovador.
 
-Crie um repositório, extraia os arquivos e envie:
+## Observação técnica
 
-```bash
-git init
-git add .
-git commit -m "Solocontrol Lab v0.1"
-git branch -M main
-git remote add origin SEU_REPOSITORIO
-git push -u origin main
-```
-
-## 4. Vercel
-
-- Importe o repositório do GitHub no Vercel.
-- Adicione as mesmas variáveis de `.env.local` em **Settings > Environment Variables**.
-- Faça o deploy.
-
-## Fluxo recomendado no laboratório
-
-1. Laboratorista entrega a ficha preenchida ao coordenador.
-2. Coordenador usa **Lançamento rápido**.
-3. Anexa obrigatoriamente foto da ficha, foto da coleta/amostra e foto da etiqueta.
-4. Sistema cria as rupturas automaticamente.
-5. Dashboard mostra o volume diário e permite delegar.
-6. Na ruptura, são obrigatórias foto do rompimento, foto da prensa e foto final do CP.
-7. O resultado é lançado e a localização física da ficha muda para a próxima data.
-8. Após a última ruptura, a ficha muda para `Arquivo Encerrado`.
-
-## Observação técnica importante
-
-A calculadora da v0.1 executa a conversão da força e a relação `força / área circular`. Ela é uma ferramenta operacional preliminar. Critérios normativos adicionais, fatores de correção, arredondamentos e regras de aceitação devem ser implementados somente após validação técnica do procedimento/norma aplicável pela Solocontrol.
-
-## Próxima etapa recomendada (v0.2)
-
-- Tela de login e perfis de acesso.
-- Leitura real do código de barras pela câmera.
-- Compressão automática de imagens antes do upload.
-- Notificações de ruptura vencendo / atrasada.
-- Não conformidades.
-- Relatório técnico oficial no padrão Solocontrol.
-- Registro de auditoria (quem alterou, valor anterior, valor novo e data/hora).
-- Aprovação do engenheiro antes da emissão.
-- Mais calculadoras validadas conforme cada ensaio.
+A calculadora atual executa conversão de força e cálculo de força/área circular para apoio operacional. A validação técnica definitiva das calculadoras, fatores de correção, arredondamentos e critérios normativos deve ser feita conforme os procedimentos e normas adotados pela Solocontrol.

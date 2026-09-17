@@ -23,7 +23,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="app-shell">
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <div className="brand-block">
-          <Image src="/logo-solocontrol.png" width={195} height={76} alt="Solocontrol" className="brand-logo" />
+          <Image src="/logo-solocontrol.png" width={205} height={102} alt="Solocontrol" className="brand-logo" priority />
           <button className="mobile-close" onClick={() => setOpen(false)}><X size={22}/></button>
           <div className="brand-title">Solocontrol Lab</div>
           <div className="brand-subtitle">Gestão de Ensaios</div>
