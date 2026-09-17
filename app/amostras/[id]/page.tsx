@@ -13,9 +13,54 @@ export default function SampleDetail(){
  useEffect(()=>{getSample(id).then(s=>{setSample(s);setActive(s?.ruptures.find(r=>r.status!=='concluido')?.id)})},[id]);
  const rupture=sample?.ruptures.find(r=>r.id===active); const calc=useMemo(()=>pressureMpa(Number(load),unit,Number(diameter)),[load,unit,diameter]);
  if(!sample) return <div className="panel">Carregando amostra...</div>;
- async function finish(){ if(!rupture || !files.rompimento || !files.prensa || !files.cpFinal || !load || !diameter) return; setSaving(true); const photos:PhotoEvidence[]=[]; for(const key of ['rompimento','prensa','cpFinal'] as const){const f=files[key]; if(!f)continue; const url=await uploadEvidence(f,`samples/${sample.id}/ruptura-${rupture.ageDays}`); photos.push({key,url,name:key,createdAt:new Date().toISOString()});}
-   const updatedR:RuptureEvent={...rupture,status:'concluido',load:Number(load),loadUnit:unit,diameterMm:Number(diameter),heightMm:Number(height),resistanceMpa:calc,completedAt:new Date().toISOString(),photos:[...rupture.photos,...photos]};
-   const ruptures=sample.ruptures.map(r=>r.id===rupture.id?updatedR:r); const next=ruptures.find(r=>r.status!=='concluido'); const updated:Sample={...sample,ruptures,physicalLocation:next?physicalLocationByDate(next.dueDate):'Arquivo Encerrado',status:next?'em_andamento':'concluido',updatedAt:new Date().toISOString()}; await saveSample(updated); setSample(updated); setFiles({}); setLoad(''); setActive(next?.id); setSaving(false);
+ async function finish(){
+   // Captura os valores atuais em constantes para o TypeScript saber que
+   // eles continuam definidos durante toda a função assíncrona.
+   const currentSample = sample;
+   const currentRupture = rupture;
+
+   if(!currentSample || !currentRupture || !files.rompimento || !files.prensa || !files.cpFinal || !load || !diameter) return;
+
+   setSaving(true);
+   try {
+     const photos:PhotoEvidence[]=[];
+     for(const key of ['rompimento','prensa','cpFinal'] as const){
+       const f=files[key];
+       if(!f) continue;
+       const url=await uploadEvidence(f,`samples/${currentSample.id}/ruptura-${currentRupture.ageDays}`);
+       photos.push({key,url,name:key,createdAt:new Date().toISOString()});
+     }
+
+     const updatedR:RuptureEvent={
+       ...currentRupture,
+       status:'concluido',
+       load:Number(load),
+       loadUnit:unit,
+       diameterMm:Number(diameter),
+       heightMm:Number(height),
+       resistanceMpa:calc,
+       completedAt:new Date().toISOString(),
+       photos:[...currentRupture.photos,...photos]
+     };
+
+     const ruptures=currentSample.ruptures.map(r=>r.id===currentRupture.id?updatedR:r);
+     const next=ruptures.find(r=>r.status!=='concluido');
+     const updated:Sample={
+       ...currentSample,
+       ruptures,
+       physicalLocation:next?physicalLocationByDate(next.dueDate):'Arquivo Encerrado',
+       status:next?'em_andamento':'concluido',
+       updatedAt:new Date().toISOString()
+     };
+
+     await saveSample(updated);
+     setSample(updated);
+     setFiles({});
+     setLoad('');
+     setActive(next?.id);
+   } finally {
+     setSaving(false);
+   }
  }
  const stages=[{label:'Recebimento',date:sample.receivedAt,done:true},{label:'Moldagem',date:sample.moldedAt,done:true},...sample.ruptures.map(r=>({label:`Ruptura ${r.ageDays} dias`,date:r.dueDate,done:r.status==='concluido'})),{label:'Relatório final',date:'',done:sample.status==='concluido'}];
  return <div className="page-stack print-area"><section className="page-heading no-print"><div><span className="eyebrow">AMOSTRA {sample.labelBase}</span><h1>Rastreabilidade da amostra</h1><p>{sample.workName} • {sample.cpQuantity} CPs</p></div><button className="button secondary" onClick={()=>window.print()}><Printer size={16}/> Imprimir</button></section>
