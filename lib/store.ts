@@ -26,6 +26,52 @@ function evidenceUrls(s:Sample){return [...s.photos,...s.ruptures.flatMap(r=>r.p
 export async function deleteSample(sample:Sample){ if(firebaseConfigured){await ensureFirebaseUser(); const currentStorage=storage; if(currentStorage) await Promise.all(evidenceUrls(sample).map(async u=>{if(!/^https?:|^gs:/.test(u))return;try{await deleteObject(ref(currentStorage,u))}catch{}})); if(db) await deleteDoc(doc(db,'samples',sample.id));} saveLocal(KEYS.samples,loadLocal<Sample[]>(KEYS.samples,demoSamples).filter(s=>s.id!==sample.id)); }
 export async function listWorks():Promise<Work[]>{if(firebaseConfigured&&db){await ensureFirebaseUser();const snap=await getDocs(collection(db,'works'));return snap.docs.map(d=>d.data() as Work);}return loadLocal(KEYS.works,demoWorks)}
 export async function saveWork(work:Work){if(firebaseConfigured&&db){await ensureFirebaseUser();await setDoc(doc(db,'works',work.id),cleanForFirestore(work))}const c=loadLocal<Work[]>(KEYS.works,demoWorks);saveLocal(KEYS.works,[work,...c.filter(w=>w.id!==work.id)])}
+
+export async function deleteWork(workId:string,{deleteLinkedSamples=true}:{deleteLinkedSamples?:boolean}={}){
+  const linkedSamples=(await listSamples()).filter(sample=>sample.workId===workId);
+
+  if(firebaseConfigured){
+    await ensureFirebaseUser();
+
+    if(deleteLinkedSamples && linkedSamples.length){
+      const currentStorage=storage;
+
+      if(currentStorage){
+        const urls=linkedSamples.flatMap(evidenceUrls);
+        await Promise.allSettled(
+          urls.map(async url=>{
+            if(!/^https?:|^gs:/.test(url))return;
+            try{await deleteObject(ref(currentStorage,url))}catch{}
+          })
+        );
+      }
+
+      if(db){
+        for(let i=0;i<linkedSamples.length;i+=400){
+          const batch=writeBatch(db);
+          linkedSamples.slice(i,i+400).forEach(sample=>{
+            batch.delete(doc(db!,'samples',sample.id));
+          });
+          await batch.commit();
+        }
+      }
+    }
+
+    if(db){
+      await deleteDoc(doc(db,'works',workId));
+    }
+  }
+
+  const localWorks=loadLocal<Work[]>(KEYS.works,demoWorks).filter(work=>work.id!==workId);
+  saveLocal(KEYS.works,localWorks);
+
+  if(deleteLinkedSamples){
+    const localSamples=loadLocal<Sample[]>(KEYS.samples,demoSamples).filter(sample=>sample.workId!==workId);
+    saveLocal(KEYS.samples,localSamples);
+  }
+
+  return { deletedSamples: deleteLinkedSamples ? linkedSamples.length : 0 };
+}
 export async function listTeam():Promise<TeamMember[]>{if(firebaseConfigured&&db){await ensureFirebaseUser();const snap=await getDocs(collection(db,'team'));return snap.docs.map(d=>d.data() as TeamMember);}return loadLocal(KEYS.team,demoTeam)}
 export async function saveTeamMember(member:TeamMember){if(firebaseConfigured&&db){await ensureFirebaseUser();await setDoc(doc(db,'team',member.id),cleanForFirestore(member))}const c=loadLocal<TeamMember[]>(KEYS.team,demoTeam);saveLocal(KEYS.team,[member,...c.filter(m=>m.id!==member.id)])}
 export async function uploadEvidence(file:File,path:string){if(firebaseConfigured&&storage){await ensureFirebaseUser();const safe=file.name.replace(/[^\w.\-]+/g,'-');const fileRef=ref(storage,`${path}/${Date.now()}-${safe}`);await uploadBytes(fileRef,file);return getDownloadURL(fileRef)}return new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(file)})}

@@ -108,3 +108,35 @@ As regras existentes de Firestore e Storage continuam compatíveis.
 ## Observação importante sobre progresso
 
 O percentual depende das metas cadastradas em **Obras**. Sem meta, o sistema exibe a quantidade já executada, mas não inventa um percentual de avanço.
+
+
+## v0.3.1 — exclusão segura de obras
+
+- Adicionado botão **Excluir** em `Obras cadastradas`.
+- Se a obra não possuir registros, uma confirmação simples é exibida.
+- Se a obra possuir fichas/ensaios vinculados, o sistema informa a quantidade e exige uma segunda confirmação digitando `EXCLUIR`.
+- A exclusão em cascata remove:
+  - cadastro da obra;
+  - fichas e ensaios vinculados;
+  - resultados;
+  - registros históricos importados;
+  - imagens vinculadas no Firebase Storage, quando disponíveis.
+- Se a obra excluída estiver selecionada no filtro global, o sistema volta automaticamente para **Todas as obras**.
+
+
+## v0.3.2 — detalhamento de pendências no Dashboard
+
+- O cartão **Sem controle** do dashboard da obra agora é clicável.
+- Ao clicar, abre uma janela com todos os registros sem controle da obra selecionada.
+- A janela mostra:
+  - data;
+  - quadra;
+  - lote;
+  - elemento;
+  - concreteira;
+  - nota fiscal;
+  - volume;
+  - planilha/aba de origem.
+- Cada linha possui **Abrir** para acessar a rastreabilidade do registro.
+- A janela mostra também o volume total envolvido nas pendências.
+- O cartão só fica interativo quando houver registros sem controle.

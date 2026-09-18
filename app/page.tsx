@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, BarChart3, CalendarDays, ClipboardCheck, FileCheck2, FlaskConical, Layers3, PackageCheck } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, ClipboardCheck, FileCheck2, FlaskConical, Layers3, PackageCheck, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
 import StatCard from '@/components/StatCard';
@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNoControl, setShowNoControl] = useState(false);
   const { selectedWorkId, selectedWork, works } = useWorkScope();
   const today = isoToday();
 
@@ -42,7 +43,8 @@ export default function DashboardPage() {
   const totalVolume = scoped.reduce((a,s)=>a+sampleVolume(s),0);
   const totalTests = completedTests(scoped);
   const reportCount = uniqueReports(scoped);
-  const noControl = scoped.filter(s=>s.historicalState==='sem_controle').length;
+  const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle').sort((a,b)=>b.moldedAt.localeCompare(a.moldedAt)), [scoped]);
+  const noControl = noControlSamples.length;
   const progress = selectedWorkId !== 'all' ? elementProgress(scoped, selectedWork) : [];
   const volumePercent = selectedWork?.plannedVolumeM3 ? Math.min(100,(totalVolume/selectedWork.plannedVolumeM3)*100) : undefined;
 
@@ -90,7 +92,7 @@ export default function DashboardPage() {
         <StatCard label="Volume de concreto" value={`${totalVolume.toLocaleString('pt-BR',{maximumFractionDigits:1})} m³`} icon={<PackageCheck/>} hint={selectedWork?.plannedVolumeM3?`meta ${selectedWork.plannedVolumeM3.toLocaleString('pt-BR')} m³`:'acumulado'} />
         <StatCard label="Ensaios realizados" value={totalTests} icon={<FlaskConical/>} hint="rupturas concluídas" />
         <StatCard label="Laudos registrados" value={reportCount} icon={<FileCheck2/>} hint="números únicos" />
-        <StatCard label="Sem controle" value={noControl} icon={<AlertTriangle/>} tone={noControl?'red':'navy'} hint="registros históricos" />
+        <StatCard label="Sem controle" value={noControl} icon={<AlertTriangle/>} tone={noControl?'red':'navy'} hint={noControl?'clique para ver pendências':'nenhuma pendência histórica'} onClick={noControl?()=>setShowNoControl(true):undefined} title={noControl?'Abrir registros sem controle':undefined} />
         <StatCard label="Pendências atuais" value={overdue.length+todayR.length} icon={<CalendarDays/>} tone={overdue.length?'red':'navy'} hint={`${overdue.length} atrasado(s)`} />
       </section>
 
@@ -117,5 +119,64 @@ export default function DashboardPage() {
         <div className="panel"><div className="panel-header"><h2>Ações rápidas</h2><BarChart3/></div><div className="quick-actions"><Link href="/lancamento">Lançar ficha</Link><Link href="/mapa">Mapa da obra</Link><Link href="/historico">Importar / exportar</Link></div></div>
       </div>
     </section>
+
+    {showNoControl && (
+      <div className="modal-backdrop" onMouseDown={(event)=>{if(event.target===event.currentTarget)setShowNoControl(false)}}>
+        <section className="modal-card no-control-modal" role="dialog" aria-modal="true" aria-labelledby="no-control-title">
+          <div className="modal-header">
+            <div>
+              <span className="eyebrow">PENDÊNCIAS HISTÓRICAS</span>
+              <h2 id="no-control-title">Registros sem controle — {noControl}</h2>
+              <p>{selectedWork?.name || 'Obra selecionada'} • registros importados que não possuem laudo/controle identificado na planilha de origem.</p>
+            </div>
+            <button className="modal-close" onClick={()=>setShowNoControl(false)} aria-label="Fechar"><X size={22}/></button>
+          </div>
+
+          <div className="modal-summary">
+            <div><span>Total</span><strong>{noControl}</strong></div>
+            <div><span>Volume envolvido</span><strong>{noControlSamples.reduce((sum,s)=>sum+sampleVolume(s),0).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</strong></div>
+            <div><span>Obra</span><strong>{selectedWork?.name || '—'}</strong></div>
+          </div>
+
+          <div className="table-wrap modal-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Quadra</th>
+                  <th>Lote</th>
+                  <th>Elemento</th>
+                  <th>Concreteira</th>
+                  <th>NF</th>
+                  <th>Volume</th>
+                  <th>Origem</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {noControlSamples.map(sample=>(
+                  <tr key={sample.id}>
+                    <td>{formatDate(sample.moldedAt)}</td>
+                    <td>{sample.block?`Q${sample.block}`:'—'}</td>
+                    <td>{sample.lot?`L${sample.lot}`:'—'}</td>
+                    <td>{formatElementLabel(String(sample.element || ''))}</td>
+                    <td>{sample.supplier || '—'}</td>
+                    <td>{sample.invoice || '—'}</td>
+                    <td>{sampleVolume(sample).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td>
+                    <td><span className="badge muted">{sample.importedSheet || 'Histórico'}</span></td>
+                    <td><Link className="text-link" href={`/amostras/${sample.id}`} onClick={()=>setShowNoControl(false)}>Abrir</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="modal-footer">
+            <span>Use “Abrir” para complementar o registro e anexar documentos/fotos quando localizar a ficha física.</span>
+            <button className="button secondary" onClick={()=>setShowNoControl(false)}>Fechar</button>
+          </div>
+        </section>
+      </div>
+    )}
   </div>
 }

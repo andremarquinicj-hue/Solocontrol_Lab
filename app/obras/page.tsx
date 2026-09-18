@@ -1,9 +1,9 @@
 'use client';
 
-import { Edit3, MapPinned, Save } from 'lucide-react';
+import { Edit3, MapPinned, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
-import { saveWork } from '@/lib/store';
+import { deleteWork, listSamples, saveWork } from '@/lib/store';
 import { Work, WorkMapMode } from '@/lib/types';
 import { makeId } from '@/lib/utils';
 
@@ -13,9 +13,10 @@ const blank = {
 };
 
 export default function WorksPage(){
-  const { works, refreshWorks, setSelectedWorkId } = useWorkScope();
+  const { works, refreshWorks, selectedWorkId, setSelectedWorkId } = useWorkScope();
   const [form,setForm]=useState(blank);
   const [saving,setSaving]=useState(false);
+  const [deletingId,setDeletingId]=useState<string>();
 
   const editing = useMemo(()=>Boolean(form.id),[form.id]);
 
@@ -63,6 +64,52 @@ export default function WorksPage(){
     }finally{setSaving(false)}
   }
 
+  async function remove(work:Work){
+    const samples = (await listSamples()).filter(sample=>sample.workId===work.id);
+    const linkedCount = samples.length;
+
+    const firstConfirmation = window.confirm(
+      linkedCount > 0
+        ? `Excluir a obra "${work.name}"?\n\nEla possui ${linkedCount} registro(s) vinculado(s). Ao continuar, a obra, as fichas, os ensaios, os resultados e as imagens vinculadas também serão excluídos.\n\nEssa ação não pode ser desfeita.`
+        : `Excluir a obra "${work.name}"?\n\nEssa ação não pode ser desfeita.`
+    );
+
+    if(!firstConfirmation)return;
+
+    if(linkedCount > 0){
+      const typed = window.prompt(
+        `Confirmação de segurança\n\nDigite EXCLUIR para apagar a obra e seus ${linkedCount} registro(s) vinculados.`
+      );
+      if(typed?.trim().toUpperCase() !== 'EXCLUIR')return;
+    }
+
+    setDeletingId(work.id);
+    try{
+      const result = await deleteWork(work.id,{deleteLinkedSamples:true});
+
+      if(selectedWorkId===work.id){
+        setSelectedWorkId('all');
+      }
+
+      if(form.id===work.id){
+        setForm(blank);
+      }
+
+      await refreshWorks();
+
+      window.alert(
+        result.deletedSamples > 0
+          ? `Obra excluída com sucesso. ${result.deletedSamples} registro(s) vinculado(s) também foram removidos.`
+          : 'Obra excluída com sucesso.'
+      );
+    }catch(error){
+      console.error(error);
+      window.alert('Não foi possível excluir a obra. Tente novamente.');
+    }finally{
+      setDeletingId(undefined);
+    }
+  }
+
   return <div className="page-stack">
     <section className="page-heading"><div><span className="eyebrow">GESTÃO MULTIOBRA</span><h1>Obras</h1><p>Cadastre metas de produção para o dashboard calcular o progresso real de cada obra.</p></div></section>
 
@@ -89,9 +136,21 @@ export default function WorksPage(){
       </div>
 
       <div className="panel">
-        <div className="panel-header"><div><h2>Obras cadastradas</h2><p>Selecione editar para definir metas e mapa.</p></div><MapPinned/></div>
+        <div className="panel-header"><div><h2>Obras cadastradas</h2><p>Edite metas, escolha o mapa ou exclua uma obra de teste.</p></div><MapPinned/></div>
         <div className="cards-list works-list">
-          {works.map(w=><div className="work-card" key={w.id}><div><b>{w.number} — {w.name}</b><span>{w.client}{w.location?` • ${w.location}`:''}</span><small>{w.plannedUnits?`${w.plannedUnits} unidades previstas`:'Sem meta de unidades'} • {w.mapMode==='villa_arauco'?'Mapa Villa Arauco':w.mapMode==='none'?'Sem mapa':'Grade Quadra/Lote'}</small></div><button className="button secondary small" onClick={()=>edit(w)}><Edit3 size={14}/>Editar</button></div>)}
+          {works.map(w=>
+            <div className="work-card" key={w.id}>
+              <div>
+                <b>{w.number} — {w.name}</b>
+                <span>{w.client}{w.location?` • ${w.location}`:''}</span>
+                <small>{w.plannedUnits?`${w.plannedUnits} unidades previstas`:'Sem meta de unidades'} • {w.mapMode==='villa_arauco'?'Mapa Villa Arauco':w.mapMode==='none'?'Sem mapa':'Grade Quadra/Lote'}</small>
+              </div>
+              <div className="work-card-actions">
+                <button className="button secondary small" onClick={()=>edit(w)} disabled={deletingId===w.id}><Edit3 size={14}/>Editar</button>
+                <button className="button danger small" onClick={()=>remove(w)} disabled={deletingId===w.id}><Trash2 size={14}/>{deletingId===w.id?'Excluindo...':'Excluir'}</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
