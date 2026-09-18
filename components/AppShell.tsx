@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Building2, Calculator, ClipboardList, FileSpreadsheet, FileText, FlaskConical, MapPinned, Menu, Users, X } from 'lucide-react';
 import { ReactNode, useState } from 'react';
+import { useWorkScope } from './WorkScope';
 
 const links = [
   { href: '/', label: 'Dashboard', icon: BarChart3 },
@@ -21,6 +22,8 @@ const links = [
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { works, selectedWorkId, setSelectedWorkId, loadingWorks } = useWorkScope();
+
   return (
     <div className="app-shell">
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
@@ -38,13 +41,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-footer">SOLOCONTROL<br/><span>Engenharia e Consultoria</span></div>
       </aside>
+
       <div className="main-area">
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setOpen(true)}><Menu size={24}/></button>
-          <div>
+          <div className="topbar-title">
             <strong>Laboratório</strong>
             <span>Controle, rastreabilidade e produção</span>
           </div>
+
+          <div className="work-selector-wrap">
+            <span>Obra em análise</span>
+            <select value={selectedWorkId} onChange={e => setSelectedWorkId(e.target.value)} disabled={loadingWorks}>
+              <option value="all">Todas as obras</option>
+              {works.map(work => <option key={work.id} value={work.id}>{work.name}</option>)}
+            </select>
+          </div>
+
           <div className="topbar-user"><div className="avatar">AM</div><div><b>Coordenação</b><small>Solocontrol</small></div></div>
         </header>
         <main className="content">{children}</main>

@@ -1,9 +1,9 @@
 'use client';
 
 import * as XLSX from 'xlsx';
-import { Sample, RuptureEvent, HistoricalState } from './types';
+import { HistoricalState, RuptureEvent, Sample, Work } from './types';
 import { makeId } from './utils';
-import { normalizeBlock, normalizeLot } from './villa-arauco';
+import { extractLots, normalizeBlock, normalizeLot } from './villa-arauco';
 
 const SHEET_MAP: Record<string, string> = {
   'CONTROLE DE CONC. - RADIER': 'RADIER',
@@ -49,7 +49,6 @@ function resultInfo(value: unknown, fallbackAgeDays: number, moldedAt: string): 
   const text = String(value).trim().toUpperCase();
   if (text.includes('DESCARTADO')) return { discarded: true };
 
-  // Excel serial used as a future/expected rupture date, not a strength result.
   if (typeof value === 'number' && value > 20000) {
     const dueDate = excelDate(value);
     return { event: { id: makeId('rup'), ageDays: fallbackAgeDays, ageLabel: `${fallbackAgeDays} dias`, dueDate, status:'pendente', photos:[] } };
@@ -83,7 +82,10 @@ function resultInfo(value: unknown, fallbackAgeDays: number, moldedAt: string): 
   };
 }
 
-export async function parseHistoricalWorkbook(file: File): Promise<{samples: Sample[]; summary: ImportSummary}> {
+export async function parseHistoricalWorkbook(file: File, work?: Work): Promise<{samples: Sample[]; summary: ImportSummary}> {
+  const target: Work = work || {
+    id: 'villa-arauco', number: 'VA', name: 'Villa Arauco', client: 'Arauco', location: 'Inocência/MS', defaultAges: [7,14,28], active: true,
+  };
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type:'array', cellDates:false });
   const samples: Sample[] = [];
@@ -127,8 +129,8 @@ export async function parseHistoricalWorkbook(file: File): Promise<{samples: Sam
       const normalizedLot = normalizeLot(lot);
       const base = labReport || `SEM-${block}-${normalizedLot}-${moldedAt}-${i}`;
       samples.push({
-        id: `hist_${sheetName.replace(/\W+/g,'_')}_${i}_${String(base).replace(/\W+/g,'_')}`,
-        workId:'villa-arauco', workName:'Villa Arauco', source:'historical_excel', includeInOperations:false,
+        id: `hist_${target.id}_${sheetName.replace(/\W+/g,'_')}_${i}_${String(base).replace(/\W+/g,'_')}`,
+        workId:target.id, workName:target.name, source:'historical_excel', includeInOperations:false,
         historicalState, importedSheet:sheetName,
         concreteNumber:String(r[0] ?? '').trim(), block, lot:String(r[3] ?? '').trim(),
         reportNumber:labReport || undefined, labSheet:labSheet || undefined,
@@ -139,7 +141,7 @@ export async function parseHistoricalWorkbook(file: File): Promise<{samples: Sam
         sampleType:'Concreto', element, location:`Q${block} - L${normalizedLot}`,
         cpQuantity:0, labelBase:base, cpLabels:[],
         physicalLocation:'Arquivo Histórico', status:'concluido', photos:[], ruptures,
-        notes:'Registro histórico importado da planilha de controle de concretagem. Evidências fotográficas não disponíveis na origem.',
+        notes:`Registro histórico importado da planilha de controle de concretagem para a obra ${target.name}. Evidências fotográficas não disponíveis na origem.`,
         createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(),
       });
     }
@@ -156,9 +158,9 @@ function valueForAge(sample: Sample, age: number): string | number {
   return '-';
 }
 
-export function exportControlWorkbook(samples: Sample[]) {
+export function exportControlWorkbook(samples: Sample[], workId?: string, workName?: string) {
   const wb = XLSX.utils.book_new();
-  const historical = samples.filter(s=>s.workId==='villa-arauco' || s.workName.toUpperCase().includes('ARAUCO'));
+  const scoped = workId && workId !== 'all' ? samples.filter(s=>s.workId===workId) : samples;
   const configs = [
     ['CONTROLE DE CONC. - RADIER','RADIER'],
     ['CONTROLE DE CONC. - PAREDES','PAREDES E LAJES'],
@@ -169,7 +171,7 @@ export function exportControlWorkbook(samples: Sample[]) {
     const rows:any[][] = [[
       'Nº CONCRETAGEM','DATA CONCRETAGEM','QUADRA','LOTE','PAVIMENTO','CONCRETEIRA','Nº NF','M³','Nº LAUDO LABORATÓRIO','FOLHA LABORATÓRIO','12 HORAS','7 DIAS (Mpa)','28 DIAS (Mpa)','63 DIAS (Mpa)'
     ]];
-    historical.filter(s=>String(s.element).toUpperCase()===element).sort((a,b)=>a.moldedAt.localeCompare(b.moldedAt)).forEach(s=>rows.push([
+    scoped.filter(s=>String(s.element).toUpperCase()===element).sort((a,b)=>a.moldedAt.localeCompare(b.moldedAt)).forEach(s=>rows.push([
       s.concreteNumber || '', s.moldedAt, s.block || '', s.lot || '', s.element || '', s.supplier || '', s.invoice || '',
       Number(String(s.volumeM3||'0').replace(',','.')) || '', s.reportNumber || '', s.labSheet || (s.historicalState==='sem_controle'?'SEM CONTROLE':''),
       valueForAge(s,.5), valueForAge(s,7), valueForAge(s,28), valueForAge(s,63)
@@ -179,16 +181,18 @@ export function exportControlWorkbook(samples: Sample[]) {
     XLSX.utils.book_append_sheet(wb, ws, name.slice(0,31));
   }
 
-  const blocks = ['01','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25'];
+  const blocks = Array.from(new Set(scoped.map(s=>normalizeBlock(s.block)).filter(Boolean))).sort();
+  const maxLot = Math.max(1, ...scoped.flatMap(s => extractLots(s.lot).map(Number).filter(n=>Number.isFinite(n))));
   const mapRows:any[][] = [[null,'CONTROLE ILUMINADO',...blocks.map(q=>`Q.${q}`),'TOTAL DE CONCRETAGENS']];
-  for (let lot=1; lot<=28; lot++) {
+  for (let lot=1; lot<=maxLot; lot++) {
     const row:any[]=[null,null]; let total=0;
     for (const block of blocks) {
-      const found = historical.some(s=>s.block===block && normalizeLot(s.lot)===String(lot).padStart(2,'0'));
+      const found = scoped.some(s=>normalizeBlock(s.block)===block && extractLots(s.lot).includes(String(lot).padStart(2,'0')));
       row.push(found ? `L.${String(lot).padStart(2,'0')}` : '-'); if(found) total++;
     }
     row.push(total); mapRows.push(row);
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mapRows), 'CONTROLE ILUMINADO');
-  XLSX.writeFile(wb, `CONTROLE_CONCRETAGEM_SOLOCONTROL_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const safeName = (workName || 'SOLOCONTROL').replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,'').toUpperCase();
+  XLSX.writeFile(wb, `CONTROLE_CONCRETAGEM_${safeName}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }

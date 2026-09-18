@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppShell from '@/components/AppShell';
+import { WorkScopeProvider } from '@/components/WorkScope';
 
 export const metadata: Metadata = {
   title: 'Solocontrol Lab',
@@ -12,5 +13,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR"><body><AppShell>{children}</AppShell></body></html>;
+  return (
+    <html lang="pt-BR">
+      <body>
+        <WorkScopeProvider>
+          <AppShell>{children}</AppShell>
+        </WorkScopeProvider>
+      </body>
+    </html>
+  );
 }

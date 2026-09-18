@@ -1,57 +1,110 @@
-# Solocontrol Lab v0.2.0
+# Solocontrol Lab v0.3.0 — Gestão Multiobra
 
-Atualização baseada na planilha **PLANILHA CONTROLE CONCRETAGEM** e na planta do **Loteamento Villa Arauco**.
+Versão do Solocontrol Lab preparada para gerenciar várias obras no mesmo sistema, mantendo o histórico, agenda operacional, mapas e indicadores separados por obra.
 
-## Novidades
+## Novidades principais
 
-- Importação retroativa de planilhas Excel usadas atualmente na obra.
-- Reconhecimento das abas:
-  - CONTROLE DE CONC. - RADIER
-  - CONTROLE DE CONC. - PAREDES
-  - CONTROLE DE CONC. - OITÕES
-  - CONTROLE DE CONC. - MUROS
-- Preserva nº da concretagem, data, quadra, lote, pavimento, concreteira, NF, volume, laudo, folha e resultados.
-- Trata casos como `SEM CONTROLE`, `DESCARTADO`, datas de ruptura ainda previstas e células com texto do tipo `28,52 - 14 DIAS`.
-- Registros importados ficam marcados como **Histórico importado** e não poluem a agenda operacional com atrasos antigos.
-- Novo **Mapa da Obra** com Quadra + Lote + Elemento.
-- Planta Villa Arauco disponível como referência visual.
-- Exportação para Excel recriando as abas de controle e um Controle Iluminado.
-- Histórico continua pesquisável em Amostras / Ensaios e pode receber anexos posteriormente.
+### 1. Seletor global de obra
+No topo do sistema existe o campo **Obra em análise**:
 
-## Como atualizar
+- Todas as obras
+- Villa Arauco
+- demais obras cadastradas
 
-Extraia o ZIP e envie todo o conteúdo para a raiz do repositório GitHub, substituindo os arquivos existentes.
-O Vercel instalará automaticamente a nova dependência `xlsx` no próximo deploy.
+O filtro é mantido durante a navegação e afeta Dashboard, Amostras/Ensaios, Mapa, Histórico e Relatórios.
+
+### 2. Dashboard por obra
+Ao selecionar uma obra específica, o dashboard mostra:
+
+- registros de concretagem;
+- volume acumulado de concreto;
+- ensaios/rupturas concluídos;
+- quantidade de laudos registrados;
+- registros sem controle;
+- pendências operacionais;
+- progresso de Radier;
+- progresso de Paredes/Lajes;
+- progresso de Oitões/Platibandas;
+- progresso de Muros, quando houver meta;
+- avanço do volume de concreto, quando houver volume previsto.
+
+O progresso por elemento usa **unidades únicas por Quadra + Lote**, evitando contar duas vezes o mesmo lote quando houver mais de uma nota fiscal/caminhão.
+
+### 3. Dashboard geral da Solocontrol
+Em **Todas as obras** são exibidos indicadores consolidados e uma tabela por obra com:
+
+- progresso;
+- registros;
+- volume;
+- ensaios;
+- ocorrências sem controle.
+
+### 4. Planejamento da obra
+Em **Obras** agora é possível cadastrar/editar:
+
+- cliente e local;
+- quantidade total de unidades prevista;
+- volume de concreto previsto;
+- meta de Radier;
+- meta de Paredes/Lajes;
+- meta de Oitões/Platibandas;
+- meta de Muros;
+- tipo de mapa.
+
+A obra Villa Arauco recebe como referência inicial 620 unidades, conforme o material de projeto utilizado na implantação do sistema. As metas podem ser alteradas pelo coordenador.
+
+### 5. Mapa individual por obra
+O **Mapa da Obra** não é mais global.
+
+- Villa Arauco: utiliza a planta de referência e a grade Quadra/Lote.
+- Outras obras: podem usar uma grade Quadra/Lote construída a partir dos próprios registros.
+- Uma obra também pode ser configurada sem mapa.
+
+As cores continuam indicando:
+
+- verde: possui registro;
+- amarelo: parcial/sem controle;
+- cinza: sem registro para o elemento selecionado.
+
+### 6. Importação histórica por obra
+Antes de importar o Excel, é obrigatório selecionar a **obra de destino**.
+
+Assim, uma planilha nunca é misturada acidentalmente com outra obra.
+
+### 7. Exportação por obra
+A exportação Excel usa a obra selecionada no topo e gera as abas de controle de concretagem e Controle Iluminado somente daquela obra.
+
+### 8. Quadra e Lote no lançamento rápido
+As novas fichas agora possuem campos opcionais de **Quadra** e **Lote**, permitindo alimentar mapas e indicadores de avanço também com os registros futuros.
+
+### 9. Lotes múltiplos em muros
+O sistema interpreta formatos do histórico como:
+
+- `01 E 18`
+- `05 E 06`
+- `11 A 14`
+- `15/16/17/18/19`
+
+Isso melhora o preenchimento do mapa e a contagem de unidades atendidas pelo elemento.
+
+## Atualização no GitHub
+
+Extraia o ZIP e substitua o conteúdo do repositório pelos arquivos desta versão.
+
+Mantenha suas variáveis do Firebase no Vercel. Não envie `.env.local` ao GitHub.
 
 ## Firebase
 
-Não é necessário criar novas coleções manualmente. Os registros históricos serão gravados na mesma coleção `samples`, com `source: historical_excel`.
+Esta versão não exige nova coleção obrigatória. Os campos adicionais de planejamento são gravados na coleção existente `works`.
 
-## Primeiro uso
+As coleções principais continuam:
 
-1. Entre em **Importar / Exportar**.
-2. Selecione a planilha de controle atual.
-3. Confira a prévia e as quantidades.
-4. Clique em **Importar registros**.
-5. Abra **Mapa da Obra** para navegar por quadra/lote.
-6. Use **Exportar planilha atualizada** quando quiser gerar uma cópia em Excel.
+- `works`
+- `samples`
+- `team`
 
-> Recomenda-se fazer a primeira importação com uma cópia da planilha original e conferir alguns laudos antes de considerar o histórico validado.
+As regras existentes de Firestore e Storage continuam compatíveis.
 
+## Observação importante sobre progresso
 
-## v0.2.1 — correção de deploy
-
-Corrigido erro de TypeScript no Vercel em `lib/store.ts`:
-
-`FirebaseStorage | null is not assignable to FirebaseStorage`
-
-A referência do Firebase Storage agora é capturada em uma constante não nula antes da exclusão assíncrona das imagens vinculadas à ficha.
-
-
-## v0.2.2 — correção da importação histórica
-
-- Corrigida a falha ao importar os registros da planilha no Firestore.
-- O Firestore não aceita propriedades com valor `undefined`; a planilha histórica possui diversos campos opcionais vazios.
-- Agora todos os objetos são higienizados antes da gravação no Firebase.
-- Mantida importação em lotes de até 400 documentos (abaixo do limite de 500 do Firestore).
-- O botão mostra `Importando...` durante a gravação e exibe detalhes do erro caso algo ainda falhe.
+O percentual depende das metas cadastradas em **Obras**. Sem meta, o sistema exibe a quantidade já executada, mas não inventa um percentual de avanço.

@@ -4,18 +4,27 @@ import { Camera, Check, Copy, ScanLine, WandSparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PhotoCapture from '@/components/PhotoCapture';
-import { listWorks, saveSample, uploadEvidence } from '@/lib/store';
-import { PhotoEvidence, Sample, Work } from '@/lib/types';
+import { useWorkScope } from '@/components/WorkScope';
+import { saveSample, uploadEvidence } from '@/lib/store';
+import { PhotoEvidence, Sample } from '@/lib/types';
 import { addDays, isoToday, makeId, normalizeLabel, physicalLocationByDate } from '@/lib/utils';
 
-const initial = { workId:'', reportNumber:'', receivedAt:isoToday(), moldedAt:isoToday(), supplier:'', invoice:'', volumeM3:'', aggregate:'', slumpMm:'', sampleType:'Concreto' as const, element:'', location:'', cpQuantity:6, labelBase:'', fieldTechnician:'', notes:'' };
+const initial = { workId:'', reportNumber:'', receivedAt:isoToday(), moldedAt:isoToday(), supplier:'', invoice:'', volumeM3:'', aggregate:'', slumpMm:'', sampleType:'Concreto' as const, element:'', block:'', lot:'', location:'', cpQuantity:6, labelBase:'', fieldTechnician:'', notes:'' };
 
 export default function QuickEntryPage() {
   const router = useRouter();
-  const [step,setStep]=useState(1); const [works,setWorks]=useState<Work[]>([]); const [form,setForm]=useState(initial); const [ages,setAges]=useState<number[]>([7,14,28]); const [files,setFiles]=useState<Record<string,File|undefined>>({}); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
-  useEffect(()=>{ listWorks().then(setWorks); },[]);
+  const { works, selectedWorkId } = useWorkScope();
+  const [step,setStep]=useState(1); const [form,setForm]=useState(initial); const [ages,setAges]=useState<number[]>([7,14,28]); const [files,setFiles]=useState<Record<string,File|undefined>>({}); const [saving,setSaving]=useState(false); const [error,setError]=useState('');
+
+  useEffect(()=>{
+    if(selectedWorkId!=='all' && !form.workId){
+      const w=works.find(x=>x.id===selectedWorkId);
+      if(w){setForm(current=>({...current,workId:w.id,location:current.location||w.name}));if(w.defaultAges?.length)setAges(w.defaultAges)}
+    }
+  },[selectedWorkId,works,form.workId]);
+
   const work=works.find(w=>w.id===form.workId);
-  const dueDates=useMemo(()=>ages.sort((a,b)=>a-b).map(age=>({age,date:addDays(form.moldedAt,age)})),[ages,form.moldedAt]);
+  const dueDates=useMemo(()=>[...ages].sort((a,b)=>a-b).map(age=>({age,date:addDays(form.moldedAt,age)})),[ages,form.moldedAt]);
   const input=(key:string)=>(e:any)=>setForm({...form,[key]:e.target.type==='number'?Number(e.target.value):e.target.value});
   const requiredPhotos=['ficha','coleta','etiqueta'];
   const canAdvance1=Boolean(form.workId && form.moldedAt && form.labelBase && form.cpQuantity>0);
@@ -35,7 +44,7 @@ export default function QuickEntryPage() {
       for(const [key,label] of photoDefs){ const file=files[key]; if(!file) continue; const url=await uploadEvidence(file,`samples/${id}/entrada`); photos.push({key:key as any,url,name:label,createdAt:new Date().toISOString()}); }
       const base=normalizeLabel(form.labelBase); const cpLabels=Array.from({length:form.cpQuantity},(_,i)=>`${base}-${i+1}`);
       const firstDue=dueDates[0]?.date || form.moldedAt;
-      const sample:Sample={ id, workId:form.workId, workName:work?.name||'Obra', reportNumber:form.reportNumber, receivedAt:form.receivedAt, moldedAt:form.moldedAt, supplier:form.supplier, invoice:form.invoice, volumeM3:form.volumeM3, aggregate:form.aggregate, slumpMm:form.slumpMm, sampleType:form.sampleType, element:form.element, location:form.location, cpQuantity:form.cpQuantity, labelBase:base, cpLabels, fieldTechnician:form.fieldTechnician, notes:form.notes, physicalLocation:physicalLocationByDate(firstDue), status:'em_andamento', photos, ruptures:dueDates.map(({age,date})=>({id:makeId('rup'),ageDays:age,dueDate:date,status:'pendente',photos:[]})), createdAt:new Date().toISOString(),updatedAt:new Date().toISOString() };
+      const sample:Sample={ id, workId:form.workId, workName:work?.name||'Obra', reportNumber:form.reportNumber, receivedAt:form.receivedAt, moldedAt:form.moldedAt, supplier:form.supplier, invoice:form.invoice, volumeM3:form.volumeM3, aggregate:form.aggregate, slumpMm:form.slumpMm, sampleType:form.sampleType, element:form.element, block:form.block||undefined, lot:form.lot||undefined, location:form.location, cpQuantity:form.cpQuantity, labelBase:base, cpLabels, fieldTechnician:form.fieldTechnician, notes:form.notes, physicalLocation:physicalLocationByDate(firstDue), status:'em_andamento', photos, ruptures:dueDates.map(({age,date})=>({id:makeId('rup'),ageDays:age,dueDate:date,status:'pendente',photos:[]})), createdAt:new Date().toISOString(),updatedAt:new Date().toISOString() };
       await saveSample(sample); localStorage.setItem('solocontrol.lastQuickEntry',JSON.stringify({...form,labelBase:''})); router.push(`/amostras/${id}`);
     } catch(e:any){setError(e?.message||'Não foi possível salvar.');} finally{setSaving(false);}
   }
@@ -56,7 +65,9 @@ export default function QuickEntryPage() {
         <label>Brita<input value={form.aggregate} onChange={input('aggregate')} placeholder="Ex.: 0"/></label>
         <label>Slump / abatimento (mm)<input value={form.slumpMm} onChange={input('slumpMm')} placeholder="Ex.: 160"/></label>
         <label>Tipo da amostra<select value={form.sampleType} onChange={input('sampleType')}><option>Concreto</option><option>Argamassa</option><option>Graute</option><option>Outro</option></select></label>
-        <label>Peça concretada<input value={form.element} onChange={input('element')} placeholder="Viga, laje, parede..."/></label>
+        <label>Peça concretada<input value={form.element} onChange={input('element')} placeholder="Radier, parede, laje, oitão..."/></label>
+        <label>Quadra<input value={form.block} onChange={input('block')} placeholder="Ex.: 25"/></label>
+        <label>Lote<input value={form.lot} onChange={input('lot')} placeholder="Ex.: 07"/></label>
         <label className="span-2">Local concretado<input value={form.location} onChange={input('location')} placeholder="Trecho / eixo / pavimento"/></label>
         <label>Data da moldagem *<input type="date" value={form.moldedAt} onChange={input('moldedAt')}/></label>
         <label>Quantidade de CPs *<input type="number" min={1} max={30} value={form.cpQuantity} onChange={input('cpQuantity')}/></label>
@@ -69,7 +80,7 @@ export default function QuickEntryPage() {
 
       {step===3 && <div><div className="mandatory-note"><Camera/><div><b>Fotos obrigatórias na entrada</b><span>Sem as três evidências o sistema não permite concluir o cadastro.</span></div></div><div className="photo-grid"><PhotoCapture label="Foto da ficha" value={files.ficha} onChange={f=>setFiles({...files,ficha:f})}/><PhotoCapture label="Foto da coleta / amostra" value={files.coleta} onChange={f=>setFiles({...files,coleta:f})}/><PhotoCapture label="Foto da etiqueta" value={files.etiqueta} onChange={f=>setFiles({...files,etiqueta:f})}/></div></div>}
 
-      {step===4 && <div className="confirm-grid"><div><h3>Resumo</h3><dl><dt>Obra</dt><dd>{work?.name}</dd><dt>Etiqueta</dt><dd>{normalizeLabel(form.labelBase)}</dd><dt>CPs</dt><dd>{form.cpQuantity}</dd><dt>Rupturas</dt><dd>{ages.sort((a,b)=>a-b).join(' / ')} dias</dd><dt>Próxima localização física</dt><dd>{dueDates[0] ? physicalLocationByDate(dueDates[0].date) : '—'}</dd></dl></div><div className="success-box"><Check size={28}/><b>Cadastro pronto</b><span>Ao salvar, o dashboard já passa a cobrar as rupturas automaticamente.</span></div></div>}
+      {step===4 && <div className="confirm-grid"><div><h3>Resumo</h3><dl><dt>Obra</dt><dd>{work?.name}</dd><dt>Etiqueta</dt><dd>{normalizeLabel(form.labelBase)}</dd><dt>Quadra / Lote</dt><dd>{form.block||form.lot?`Q${form.block||'—'} / L${form.lot||'—'}`:'—'}</dd><dt>CPs</dt><dd>{form.cpQuantity}</dd><dt>Rupturas</dt><dd>{[...ages].sort((a,b)=>a-b).join(' / ')} dias</dd><dt>Próxima localização física</dt><dd>{dueDates[0] ? physicalLocationByDate(dueDates[0].date) : '—'}</dd></dl></div><div className="success-box"><Check size={28}/><b>Cadastro pronto</b><span>Ao salvar, o dashboard da obra já passa a considerar este lançamento.</span></div></div>}
 
       {error && <div className="error-box">{error}</div>}
       <div className="wizard-actions"><button className="button ghost" disabled={step===1} onClick={()=>setStep(step-1)}>Voltar</button>{step<4?<button className="button primary" disabled={(step===1&&!canAdvance1)||(step===2&&!canAdvance2)||(step===3&&!canAdvance3)} onClick={()=>setStep(step+1)}>Próximo</button>:<button className="button primary" disabled={saving} onClick={submit}>{saving?'Salvando...':'Salvar ficha'}</button>}</div>

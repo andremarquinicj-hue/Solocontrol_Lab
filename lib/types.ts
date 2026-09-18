@@ -4,6 +4,7 @@ export type PhotoKey = 'ficha' | 'coleta' | 'etiqueta' | 'rompimento' | 'prensa'
 export type SampleSource = 'manual' | 'historical_excel';
 export type HistoricalState = 'concluido' | 'parcial' | 'sem_controle' | 'descartado';
 export type ConcreteElement = 'RADIER' | 'PAREDES E LAJES' | 'OITÕES E PLATIBANDAS' | 'MURO DE ARRIMO' | string;
+export type WorkMapMode = 'villa_arauco' | 'grid' | 'none';
 
 export interface PhotoEvidence {
   key: PhotoKey;
@@ -73,6 +74,12 @@ export interface Work {
   location?: string;
   defaultAges: number[];
   active: boolean;
+  plannedUnits?: number;
+  plannedVolumeM3?: number;
+  plannedElements?: Record<string, number>;
+  mapMode?: WorkMapMode;
+  mapImage?: string;
+  mapMaxLot?: number;
 }
 
 export interface TeamMember {

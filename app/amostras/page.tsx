@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { deleteSample, listSamples } from '@/lib/store';
 import { Sample } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
+import { useWorkScope } from '@/components/WorkScope';
 
 export default function SamplesPage() {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [q, setQ] = useState('');
   const [deletingId, setDeletingId] = useState<string>();
+  const { selectedWorkId } = useWorkScope();
 
   useEffect(() => {
     listSamples().then(setSamples);
@@ -19,11 +21,12 @@ export default function SamplesPage() {
   const filtered = useMemo(
     () =>
       samples.filter((sample) =>
+        (selectedWorkId === 'all' || sample.workId === selectedWorkId) &&
         `${sample.labelBase} ${sample.workName} ${sample.reportNumber || ''}`
           .toLowerCase()
           .includes(q.toLowerCase()),
       ),
-    [samples, q],
+    [samples, q, selectedWorkId],
   );
 
   async function removeSample(sample: Sample) {

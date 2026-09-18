@@ -4,7 +4,7 @@ import { addDays, isoToday, makeId, physicalLocationByDate } from './utils';
 const today = isoToday();
 
 export const demoWorks: Work[] = [
-  { id: 'work-arauco', number: '01', name: 'Arauco - Inocência', client: 'Arauco', location: 'Inocência/MS', defaultAges: [7, 14, 28], active: true },
+  { id: 'villa-arauco', number: 'VA', name: 'Villa Arauco', client: 'Arauco', location: 'Inocência/MS', defaultAges: [7, 14, 28], active: true, plannedUnits: 620, plannedElements: { 'RADIER': 620, 'PAREDES E LAJES': 620, 'OITÕES E PLATIBANDAS': 620 }, mapMode: 'villa_arauco', mapImage: '/villa-arauco-planta.png', mapMaxLot: 28 },
   { id: 'work-q21', number: '26', name: 'QD21 - L04', client: 'Cliente Demonstração', location: 'Obra', defaultAges: [7, 28], active: true }
 ];
 
