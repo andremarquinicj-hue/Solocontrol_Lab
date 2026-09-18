@@ -46,3 +46,12 @@ Corrigido erro de TypeScript no Vercel em `lib/store.ts`:
 `FirebaseStorage | null is not assignable to FirebaseStorage`
 
 A referência do Firebase Storage agora é capturada em uma constante não nula antes da exclusão assíncrona das imagens vinculadas à ficha.
+
+
+## v0.2.2 — correção da importação histórica
+
+- Corrigida a falha ao importar os registros da planilha no Firestore.
+- O Firestore não aceita propriedades com valor `undefined`; a planilha histórica possui diversos campos opcionais vazios.
+- Agora todos os objetos são higienizados antes da gravação no Firebase.
+- Mantida importação em lotes de até 400 documentos (abaixo do limite de 500 do Firestore).
+- O botão mostra `Importando...` durante a gravação e exibe detalhes do erro caso algo ainda falhe.
