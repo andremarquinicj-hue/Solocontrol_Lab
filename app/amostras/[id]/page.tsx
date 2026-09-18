@@ -145,7 +145,7 @@ export default function SampleDetail() {
     { label: 'Recebimento', date: sample.receivedAt, done: true },
     { label: 'Moldagem', date: sample.moldedAt, done: true },
     ...sample.ruptures.map((item) => ({
-      label: `Ruptura ${item.ageDays} dias`,
+      label: `Ruptura ${item.ageLabel || `${item.ageDays} dias`}`,
       date: item.dueDate,
       done: item.status === 'concluido',
     })),
@@ -255,7 +255,7 @@ export default function SampleDetail() {
                 }`}
                 onClick={() => setActive(item.id)}
               >
-                {item.ageDays} dias
+                {item.ageLabel || `${item.ageDays} dias`}
                 <small>{formatDate(item.dueDate)}</small>
               </button>
             ))}
@@ -372,7 +372,7 @@ export default function SampleDetail() {
             {sample.ruptures.map((item) => (
               <div key={item.id}>
                 <div>
-                  <b>{item.ageDays} dias</b>
+                  <b>{item.ageLabel || `${item.ageDays} dias`}</b>
                   <span>{formatDate(item.dueDate)}</span>
                 </div>
 
@@ -432,7 +432,7 @@ export default function SampleDetail() {
           <tbody>
             {sample.ruptures.map((item) => (
               <tr key={item.id}>
-                <td>{item.ageDays} dias</td>
+                <td>{item.ageLabel || `${item.ageDays} dias`}</td>
                 <td>{formatDate(item.dueDate)}</td>
                 <td>{item.load ? `${item.load} ${item.loadUnit}` : '—'}</td>
                 <td>

@@ -17,7 +17,8 @@ export default function DashboardPage() {
   async function load() { setLoading(true); setSamples(await listSamples()); setTeam(await listTeam()); setLoading(false); }
   useEffect(() => { load(); }, []);
 
-  const ruptures = useMemo(() => samples.flatMap(sample => sample.ruptures.map(r => ({...r, sample}))), [samples]);
+  const operationalSamples = useMemo(() => samples.filter(sample => sample.includeInOperations !== false && sample.source !== 'historical_excel'), [samples]);
+  const ruptures = useMemo(() => operationalSamples.flatMap(sample => sample.ruptures.map(r => ({...r, sample}))), [operationalSamples]);
   const todayR = ruptures.filter(r => r.dueDate === today && r.status !== 'concluido');
   const overdue = ruptures.filter(r => r.dueDate < today && r.status !== 'concluido');
   const ageCount = (age:number) => ruptures.filter(r => r.ageDays === age && r.status !== 'concluido').length;
@@ -39,7 +40,7 @@ export default function DashboardPage() {
       <StatCard label="7 dias" value={ageCount(7)} icon={<CalendarDays/>} hint="em aberto" />
       <StatCard label="14 dias" value={ageCount(14)} icon={<CalendarDays/>} hint="em aberto" />
       <StatCard label="28 dias" value={ageCount(28)} icon={<CalendarDays/>} hint="em aberto" />
-      <StatCard label="Fichas ativas" value={samples.filter(s=>s.status==='em_andamento').length} icon={<FolderSearch/>} tone="navy" />
+      <StatCard label="Fichas ativas" value={operationalSamples.filter(s=>s.status==='em_andamento').length} icon={<FolderSearch/>} tone="navy" />
     </section>
 
     <section className="two-columns dashboard-columns">
@@ -47,7 +48,7 @@ export default function DashboardPage() {
         <div className="panel-header"><div><h2>Agenda de ensaios</h2><p>Prioridade automática por atraso e data.</p></div><span className="badge muted">{agenda.length} itens</span></div>
         <div className="table-wrap"><table><thead><tr><th>Etiqueta</th><th>Obra</th><th>Idade</th><th>Ruptura</th><th>Responsável</th><th>Status</th><th></th></tr></thead><tbody>
           {loading && <tr><td colSpan={7}>Carregando...</td></tr>}
-          {!loading && agenda.map(r => { const late = r.dueDate < today; return <tr key={r.id}><td><b>{r.sample.labelBase}</b></td><td>{r.sample.workName}</td><td>{r.ageDays} dias</td><td>{formatDate(r.dueDate)}</td><td><select value={r.responsible || ''} onChange={e=>assign(r.sample.id,r.id,e.target.value)}><option value="">Não atribuído</option>{team.map(m=><option key={m.id}>{m.name}</option>)}</select></td><td><span className={`status ${late ? 'atrasado' : r.status}`}>{late ? 'Atrasado' : r.status.replace('_',' ')}</span></td><td><Link className="text-link" href={`/amostras/${r.sample.id}`}>Abrir</Link></td></tr>})}
+          {!loading && agenda.map(r => { const late = r.dueDate < today; return <tr key={r.id}><td><b>{r.sample.labelBase}</b></td><td>{r.sample.workName}</td><td>{r.ageLabel || `${r.ageDays} dias`}</td><td>{formatDate(r.dueDate)}</td><td><select value={r.responsible || ''} onChange={e=>assign(r.sample.id,r.id,e.target.value)}><option value="">Não atribuído</option>{team.map(m=><option key={m.id}>{m.name}</option>)}</select></td><td><span className={`status ${late ? 'atrasado' : r.status}`}>{late ? 'Atrasado' : r.status.replace('_',' ')}</span></td><td><Link className="text-link" href={`/amostras/${r.sample.id}`}>Abrir</Link></td></tr>})}
         </tbody></table></div>
       </div>
       <div className="side-stack">

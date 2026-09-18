@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Building2, Calculator, ClipboardList, FileText, FlaskConical, Menu, Users, X } from 'lucide-react';
+import { BarChart3, Building2, Calculator, ClipboardList, FileSpreadsheet, FileText, FlaskConical, MapPinned, Menu, Users, X } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 
 const links = [
@@ -11,6 +11,8 @@ const links = [
   { href: '/amostras', label: 'Amostras / Ensaios', icon: FlaskConical },
   { href: '/lancamento', label: 'Lançamento rápido', icon: ClipboardList },
   { href: '/obras', label: 'Obras', icon: Building2 },
+  { href: '/mapa', label: 'Mapa da Obra', icon: MapPinned },
+  { href: '/historico', label: 'Importar / Exportar', icon: FileSpreadsheet },
   { href: '/equipe', label: 'Equipe', icon: Users },
   { href: '/calculadoras', label: 'Calculadoras', icon: Calculator },
   { href: '/relatorios', label: 'Relatórios', icon: FileText },

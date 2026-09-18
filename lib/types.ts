@@ -1,12 +1,9 @@
 export type Status = 'pendente' | 'em_execucao' | 'concluido' | 'atrasado';
 
-export type PhotoKey =
-  | 'ficha'
-  | 'coleta'
-  | 'etiqueta'
-  | 'rompimento'
-  | 'prensa'
-  | 'cpFinal';
+export type PhotoKey = 'ficha' | 'coleta' | 'etiqueta' | 'rompimento' | 'prensa' | 'cpFinal';
+export type SampleSource = 'manual' | 'historical_excel';
+export type HistoricalState = 'concluido' | 'parcial' | 'sem_controle' | 'descartado';
+export type ConcreteElement = 'RADIER' | 'PAREDES E LAJES' | 'OITÕES E PLATIBANDAS' | 'MURO DE ARRIMO' | string;
 
 export interface PhotoEvidence {
   key: PhotoKey;
@@ -18,6 +15,7 @@ export interface PhotoEvidence {
 export interface RuptureEvent {
   id: string;
   ageDays: number;
+  ageLabel?: string;
   dueDate: string;
   status: Status;
   responsible?: string;
@@ -35,7 +33,15 @@ export interface Sample {
   id: string;
   workId: string;
   workName: string;
+  source?: SampleSource;
+  includeInOperations?: boolean;
+  historicalState?: HistoricalState;
+  importedSheet?: string;
+  concreteNumber?: string;
+  block?: string;
+  lot?: string;
   reportNumber?: string;
+  labSheet?: string;
   receivedAt: string;
   moldedAt: string;
   supplier?: string;
@@ -44,7 +50,7 @@ export interface Sample {
   aggregate?: string;
   slumpMm?: string;
   sampleType: 'Concreto' | 'Argamassa' | 'Graute' | 'Outro';
-  element?: string;
+  element?: ConcreteElement;
   location?: string;
   cpQuantity: number;
   labelBase: string;
