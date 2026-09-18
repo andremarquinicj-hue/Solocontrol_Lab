@@ -37,3 +37,12 @@ Não é necessário criar novas coleções manualmente. Os registros históricos
 6. Use **Exportar planilha atualizada** quando quiser gerar uma cópia em Excel.
 
 > Recomenda-se fazer a primeira importação com uma cópia da planilha original e conferir alguns laudos antes de considerar o histórico validado.
+
+
+## v0.2.1 — correção de deploy
+
+Corrigido erro de TypeScript no Vercel em `lib/store.ts`:
+
+`FirebaseStorage | null is not assignable to FirebaseStorage`
+
+A referência do Firebase Storage agora é capturada em uma constante não nula antes da exclusão assíncrona das imagens vinculadas à ficha.
