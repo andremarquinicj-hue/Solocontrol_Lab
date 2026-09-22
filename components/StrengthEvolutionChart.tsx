@@ -1,6 +1,7 @@
 'use client';
 
 import { Sample, Work } from '@/lib/types';
+import { sampleCollectionDate } from '@/lib/work-analytics';
 import { sampleStrengthSeries } from '@/lib/technical-analysis';
 import { profileTargetStrength, resolveProcessProfile, sampleProcessType } from '@/lib/process-profiles';
 
@@ -18,7 +19,7 @@ export default function StrengthEvolutionChart({samples,work,title='Evolução d
   const series=samples
     .map(sample=>({sample,points:sampleStrengthSeries(sample)}))
     .filter(item=>item.points.length)
-    .sort((a,b)=>b.sample.moldedAt.localeCompare(a.sample.moldedAt))
+    .sort((a,b)=>sampleCollectionDate(b.sample).localeCompare(sampleCollectionDate(a.sample)))
     .slice(0,maxSeries);
 
   if(!series.length){

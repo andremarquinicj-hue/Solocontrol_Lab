@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
 import { deleteNonConformity, listNonConformities, listSamples, saveNonConformity, uploadEvidence } from '@/lib/store';
-import { NonConformity, NonConformityStatus, Sample } from '@/lib/types';
+import { NonConformity, NonConformityStatus, PhotoEvidence, Sample } from '@/lib/types';
 import { formatDate, makeId } from '@/lib/utils';
 
 const types=['CP sem identificação','Ficha incompleta','CP danificado','Ruptura fora da idade','Amostra perdida','Erro de moldagem','Erro de transporte','Equipamento','Resultado atípico','Outro'];
@@ -27,7 +27,7 @@ export default function NCPage(){
     if(!workId||!description)return;
     const now=new Date().toISOString();
     const id=makeId('nc');
-    const photos=[];
+    const photos:PhotoEvidence[]=[];
     if(photo){const url=await uploadEvidence(photo,`non-conformities/${id}`);photos.push({key:'naoConformidade' as const,url,name:'Evidência da não conformidade',createdAt:now})}
     await saveNonConformity({id,workId,sampleId:sampleId||undefined,type,description,status:'aberta',responsible:responsible||undefined,photos,createdAt:now,updatedAt:now});
     setDescription('');setSampleId('');setResponsible('');setPhoto(undefined);await load();

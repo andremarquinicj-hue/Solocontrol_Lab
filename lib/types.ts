@@ -1,7 +1,7 @@
 export type Status = 'pendente' | 'em_execucao' | 'concluido' | 'atrasado';
 
 export type PhotoKey = 'ficha' | 'coleta' | 'etiqueta' | 'rompimento' | 'prensa' | 'cpFinal' | 'naoConformidade' | 'descarte';
-export type SampleSource = 'manual' | 'historical_excel';
+export type SampleSource = 'manual' | 'historical_excel' | 'rupture_excel';
 export type HistoricalState = 'concluido' | 'parcial' | 'sem_controle' | 'descartado';
 export type ConcreteElement = 'RADIER' | 'PAREDES E LAJES' | 'OITÕES E PLATIBANDAS' | 'MURO DE ARRIMO' | string;
 export type WorkMapMode = 'villa_arauco' | 'custom' | 'grid' | 'none';
@@ -9,6 +9,7 @@ export type UserRole = 'admin' | 'coordinator' | 'technician' | 'engineer' | 'cl
 export type SheetState = 'arquivo' | 'coordenador' | 'laboratorista' | 'prensa' | 'aguardando_lancamento' | 'arquivada';
 export type ApprovalStatus = 'draft' | 'review' | 'approved';
 export type NonConformityStatus = 'aberta' | 'em_tratamento' | 'encerrada';
+export type RuptureImportMatchStatus = 'matched' | 'unmatched' | 'ambiguous';
 export type AgeUnit = 'hours' | 'days';
 export type ConcreteProcessType = 'RADIER' | 'PAREDES' | 'LAJE' | 'OITAO_PLATIBANDA' | 'OUTRO';
 export type RupturePurpose = 'form_release' | 'control' | 'reserve' | 'other';
@@ -72,6 +73,8 @@ export interface RuptureEvent {
   heightMm?: number;
   resistanceMpa?: number;
   measurements?: RuptureMeasurement[];
+  importedResultsMpa?: number[];
+  importSource?: string;
   specimenIds?: string[];
   completedAt?: string;
   notes?: string;
@@ -134,6 +137,8 @@ export interface Sample {
   reportNumber?: string;
   labSheet?: string;
   receivedAt: string;
+  collectedAt?: string;
+  collectedTime?: string;
   moldedAt: string;
   moldedTime?: string;
   supplier?: string;
@@ -163,6 +168,10 @@ export interface Sample {
   specimens?: ConcreteSpecimen[];
   fieldTechnician?: string;
   notes?: string;
+  qualityDecision?: string;
+  qualityObservation?: string;
+  reserveDisposition?: 'discarded' | 'tested' | 'scheduled' | 'unknown';
+  ruptureImportUpdatedAt?: string;
   physicalLocation: string;
   sheetState?: SheetState;
   sheetCustodian?: string;
@@ -213,6 +222,35 @@ export interface Work {
   tankCapacityCp?: number;
 }
 
+
+export interface RuptureImportResult {
+  ageDays: number;
+  dueDate?: string;
+  resistanceMpa?: number;
+}
+
+export interface RuptureImportRecord {
+  id: string;
+  workId: string;
+  sourceFile: string;
+  sourceSheet: string;
+  sourceRow: number;
+  identification?: string;
+  supplier?: string;
+  invoice?: string;
+  concreteDate: string;
+  projectMpa?: number;
+  results: RuptureImportResult[];
+  ap?: string;
+  rp?: string;
+  observation?: string;
+  matchStatus: RuptureImportMatchStatus;
+  matchedSampleId?: string;
+  matchScore?: number;
+  candidateSampleIds?: string[];
+  importedAt: string;
+}
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -234,7 +272,7 @@ export interface UserProfile {
 
 export interface AuditEvent {
   id: string;
-  entityType: 'sample' | 'work' | 'non_conformity' | 'equipment' | 'checklist' | 'auth';
+  entityType: 'sample' | 'work' | 'non_conformity' | 'equipment' | 'checklist' | 'auth' | 'rupture_import';
   entityId: string;
   workId?: string;
   sampleId?: string;

@@ -22,6 +22,10 @@ export function normalizeElementGroup(value?: string): string {
   return v;
 }
 
+export function sampleCollectionDate(sample: Sample): string {
+  return sample.collectedAt || sample.moldedAt;
+}
+
 export function sampleVolume(sample: Sample): number {
   return Number(String(sample.volumeM3 || '0').replace(',', '.')) || 0;
 }
@@ -45,7 +49,13 @@ export function uniqueConcreteUnits(samples: Sample[], element?: string): number
 
 export function completedTests(samples: Sample[]): number {
   return samples.reduce(
-    (total, sample) => total + sample.ruptures.filter(r => r.status === 'concluido').length,
+    (total, sample) => total + sample.ruptures.filter(r =>
+      r.status === 'concluido' && (
+        r.resistanceMpa !== undefined ||
+        Boolean(r.measurements?.length) ||
+        Boolean(r.importedResultsMpa?.length)
+      )
+    ).length,
     0,
   );
 }

@@ -8,7 +8,7 @@ import StatCard from '@/components/StatCard';
 import { listSamples, listTeam, saveSample } from '@/lib/store';
 import { Sample, TeamMember } from '@/lib/types';
 import { formatDate, isoToday, isRuptureOverdue, ruptureAgeLabel, ruptureScheduleLabel } from '@/lib/utils';
-import { completedTests, elementProgress, formatElementLabel, overallProgress, sampleVolume, uniqueReports, workSamples } from '@/lib/work-analytics';
+import { completedTests, elementProgress, formatElementLabel, overallProgress, sampleCollectionDate, sampleVolume, uniqueReports, workSamples } from '@/lib/work-analytics';
 import { analyzeFormRelease, resolveSpecimens } from '@/lib/technical-analysis';
 import { checkSlump, resolveProcessProfile, sampleProcessType } from '@/lib/process-profiles';
 
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const totalVolume = scoped.reduce((a,s)=>a+sampleVolume(s),0);
   const totalTests = completedTests(scoped);
   const reportCount = uniqueReports(scoped);
-  const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle').sort((a,b)=>b.moldedAt.localeCompare(a.moldedAt)), [scoped]);
+  const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle').sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))), [scoped]);
   const noControl = noControlSamples.length;
   const progress = selectedWorkId !== 'all' ? elementProgress(scoped, selectedWork) : [];
   const eligibleReserveCount = useMemo(()=>scoped.reduce((sum,sample)=>{
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               <tbody>
                 {noControlSamples.map(sample=>(
                   <tr key={sample.id}>
-                    <td>{formatDate(sample.moldedAt)}</td>
+                    <td>{formatDate(sampleCollectionDate(sample))}</td>
                     <td>{sample.block?`Q${sample.block}`:'—'}</td>
                     <td>{sample.lot?`L${sample.lot}`:'—'}</td>
                     <td>{formatElementLabel(String(sample.element || ''))}</td>

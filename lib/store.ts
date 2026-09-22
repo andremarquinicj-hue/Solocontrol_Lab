@@ -9,6 +9,7 @@ import {
   DailyChecklist,
   Equipment,
   NonConformity,
+  RuptureImportRecord,
   Sample,
   TeamMember,
   UserProfile,
@@ -25,6 +26,7 @@ const KEYS = {
   equipment: 'solocontrol.equipment',
   checklists: 'solocontrol.checklists',
   users: 'solocontrol.users',
+  ruptureImports: 'solocontrol.ruptureImports',
 };
 
 function loadLocal<T>(key: string, fallback: T): T {
@@ -217,6 +219,15 @@ export async function deleteWork(workId: string, { deleteLinkedSamples = true }:
   }
   saveLocal(KEYS.works, loadLocal<Work[]>(KEYS.works, demoWorks).filter(work => work.id !== workId));
   if (deleteLinkedSamples) saveLocal(KEYS.samples, loadLocal<Sample[]>(KEYS.samples, demoSamples).filter(sample => sample.workId !== workId));
+  const linkedImports=(await listRuptureImports()).filter(item=>item.workId===workId);
+  if(firebaseConfigured&&db&&linkedImports.length){
+    for(let i=0;i<linkedImports.length;i+=400){
+      const batch=writeBatch(db);
+      linkedImports.slice(i,i+400).forEach(item=>batch.delete(doc(db!,'ruptureImports',item.id)));
+      await batch.commit();
+    }
+  }
+  saveLocal(KEYS.ruptureImports,loadLocal<RuptureImportRecord[]>(KEYS.ruptureImports,[]).filter(item=>item.workId!==workId));
   await logAudit({ entityType:'work', entityId:workId, workId, action:'delete', description:`Obra excluída com ${deleteLinkedSamples ? linkedSamples.length : 0} registro(s) vinculado(s)` });
   return { deletedSamples: deleteLinkedSamples ? linkedSamples.length : 0 };
 }
@@ -259,6 +270,36 @@ export async function uploadEvidence(file: File, path: string) {
   });
 }
 
+
+export async function listRuptureImports(): Promise<RuptureImportRecord[]> {
+  if(firebaseConfigured&&db){
+    try{
+      await ensureFirebaseUser();
+      const snap=await getDocs(collection(db,'ruptureImports'));
+      const data=snap.docs.map(d=>d.data() as RuptureImportRecord).sort((a,b)=>b.concreteDate.localeCompare(a.concreteDate));
+      saveLocal(KEYS.ruptureImports,data);
+      return data;
+    }catch(error){console.warn('Usando cache local de importações de ruptura:',error)}
+  }
+  return loadLocal<RuptureImportRecord[]>(KEYS.ruptureImports,[]);
+}
+
+export async function saveRuptureImportsBatch(records:RuptureImportRecord[]) {
+  if(firebaseConfigured&&db){
+    await ensureFirebaseUser();
+    for(let i=0;i<records.length;i+=400){
+      const batch=writeBatch(db);
+      records.slice(i,i+400).forEach(item=>batch.set(doc(db!,'ruptureImports',item.id),cleanForFirestore(item)));
+      await batch.commit();
+    }
+  }else{
+    const current=loadLocal<RuptureImportRecord[]>(KEYS.ruptureImports,[]);
+    const ids=new Set(records.map(r=>r.id));
+    saveLocal(KEYS.ruptureImports,[...records,...current.filter(r=>!ids.has(r.id))]);
+  }
+  await logAudit({entityType:'rupture_import',entityId:'batch',action:'rupture_import',description:`${records.length} linha(s) da planilha de rupturas preservadas`});
+}
+
 export async function listNonConformities(): Promise<NonConformity[]> {
   if(firebaseConfigured&&db){try{await ensureFirebaseUser();const snap=await getDocs(collection(db,'nonConformities'));const data=snap.docs.map(d=>d.data() as NonConformity);saveLocal(KEYS.nonConformities,data);return data}catch{}}
   return loadLocal<NonConformity[]>(KEYS.nonConformities,[]);
@@ -277,6 +318,6 @@ export async function listUserProfiles():Promise<UserProfile[]>{if(firebaseConfi
 export async function saveUserProfile(profile:UserProfile){if(firebaseConfigured&&db){await ensureFirebaseUser();await setDoc(doc(db,'users',profile.uid),cleanForFirestore(profile))}const current=loadLocal<UserProfile[]>(KEYS.users,[]);saveLocal(KEYS.users,[profile,...current.filter(x=>x.uid!==profile.uid)])}
 
 export async function getBackupSnapshot(){
-  const [samples,works,team,audit,nonConformities,equipment,checklists,users]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles()]);
-  return {generatedAt:new Date().toISOString(),version:'0.6.1',samples,works,team,audit,nonConformities,equipment,checklists,users};
+  const [samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles(),listRuptureImports()]);
+  return {generatedAt:new Date().toISOString(),version:'0.7.0',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
 }

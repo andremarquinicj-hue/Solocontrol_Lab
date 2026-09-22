@@ -1,241 +1,153 @@
-
-## v0.6.1 — correção de build
-
-- Corrigida a tipagem do campo **Construtora / executora** no cadastro de Obras.
-- O formulário agora inicializa e carrega corretamente `contractor`, permitindo salvar COPLAN ou outra executora sem erro no build do Vercel.
-- Nenhuma funcionalidade da v0.6.0 foi removida.
-
-# Solocontrol Lab v0.5.1
+# Solocontrol Lab v0.7.0 — Operação diária + base atualizada de rupturas
 
 Versão consolidada recomendada para publicação.
 
-A v0.5.1 já contém as melhorias das versões anteriores. Não é necessário publicar v0.4.0 ou v0.5.0 antes.
+A v0.7.0 contém tudo o que já estava na v0.6.1 e acrescenta a atualização baseada na planilha enviada em 22/09/2026:
 
-## Principais módulos
+`344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS.xlsx`
 
-- Dashboard multiobra
-- Central do Coordenador
-- Lançamento rápido de fichas
-- Amostras e rastreabilidade
-- Dossiê Técnico do Lote
-- Mapa por obra
-- Histórico / importação e exportação Excel
-- Relatório Diário com fotos
-- Portal do Cliente
-- Gestão individual de CPs
-- Gestão do Tanque / câmara de cura
-- Controle de CPs de reserva
-- Não conformidades
-- Equipamentos e calibrações
-- Scanner de etiquetas
-- Equipe e matriz de treinamento
-- Auditoria
-- Visão Executiva
-- Acessos e perfis
-- Backup JSON
-- PWA
+## O que foi corrigido
 
-## Idades de ruptura em horas e dias
+### 1. Nova planilha de CPs / rupturas
+A tela `Importar / Sincronizar Excel` agora reconhece dois formatos diferentes:
 
-O sistema aceita idades como:
+1. planilha de concretagens, com Quadra/Lote/volume/laudo;
+2. planilha atualizada de CPs/rupturas, com MPa de projeto, 7d, 28d, 63d, AP/RP e observações.
 
-```text
-24h
-48h
-72h
-3d
-7d
-14d
-28d
-63d
-90d
-```
+A planilha de rupturas **não cria uma nova concretagem**. Ela atualiza os registros espaciais já existentes quando o vínculo é seguro.
 
-Também aceita idades personalizadas, por exemplo:
+### 2. Base recebida já embutida na versão
+A planilha enviada pelo coordenador já foi convertida e incluída em:
 
-```text
-36h
-21d
-45d
-```
+`public/data/villa-arauco-rupturas-2026-09-22.json`
 
-Em `Obras`, as idades padrão podem ser cadastradas assim:
+Na tela de histórico da Villa Arauco aparece:
 
-```text
-24h,7d,28d,63d
-```
+`Atualização de CPs e rupturas de 22/09/2026`
 
-- `h` = horas
-- `d` = dias
+Basta:
 
-### Ruptura de 24 horas
+1. clicar em `Preparar sincronização`;
+2. revisar a prévia;
+3. clicar em `Aplicar atualização`.
 
-Quando existir uma idade em horas, o horário da moldagem é obrigatório.
+### 3. Resultado da análise da planilha recebida
+A fonte possui:
 
-Exemplo:
+- 2 abas;
+- 1.323 linhas reconhecidas;
+- período de 03/02/2026 a 17/06/2026;
+- MPa de projeto;
+- resultados de 7, 28 e 63 dias;
+- AP/RP;
+- observações, inclusive descarte de CPs de 63 dias e registros de NC.
 
-```text
-Moldagem: 22/09/2026 às 09:35
-Ruptura 24h: 23/09/2026 às 09:35
-```
+Ao comparar com os 951 registros espaciais já existentes da Villa Arauco:
 
-O horário programado aparece no Dashboard, Central do Coordenador, ficha, relatório diário, Dossiê Técnico e Gestão do Tanque.
+- 884 linhas possuem vínculo seguro;
+- 878 fichas existentes podem ser atualizadas;
+- 439 linhas não possuem informação suficiente para um vínculo espacial seguro;
+- essas 439 linhas ficam preservadas no `Arquivo complementar de rupturas`, sem inventar Quadra/Lote e sem duplicar concretagens.
 
-Para idades em dias sem horário de moldagem, o sistema mantém vencimento diário, sem marcar atraso artificialmente no meio do dia.
+Essa separação é proposital para proteger a rastreabilidade.
 
-## Dossiê Técnico do Lote
+## Data real da coleta / amostragem
 
-No `Mapa da Obra`, clicar em um lote abre:
+Novas fichas possuem:
 
-- resumo técnico;
-- concretagens;
-- concreteira e NF;
-- volume;
-- slump;
-- fck;
-- laudos;
-- cargas;
-- resultados em MPa;
-- rompimentos por idade;
-- análise automática de apoio;
-- links para as fichas completas.
+- data da coleta;
+- horário da coleta;
+- data/hora da moldagem;
+- data/hora em que a ficha foi lançada no sistema.
 
-A análise automática é gerencial e não substitui normas, projeto, contrato, procedimentos nem a avaliação do responsável técnico.
+Assim, se uma concretagem ocorrer no sábado e for digitada na segunda-feira, o sistema continua atribuindo a concretagem e o relatório diário à **data real da coleta**.
 
-## Gestão dos CPs de reserva
+A data de criação do registro permanece no histórico de auditoria.
 
-Cada nova ficha pode criar os CPs individualmente.
+## Relatório técnico em PDF
 
-Estados previstos:
+O Dossiê Técnico do Lote agora possui:
 
-```text
-Armazenado
-Rompido
-Manter reserva
-Elegível para avaliação de descarte
-Descartado
-```
+- `Gerar PDF`
+- `PDF / WhatsApp`
 
-O sistema nunca descarta CP automaticamente.
+O PDF inclui:
 
-Quando a idade principal de controle atende à referência gerencial configurada, o CP de reserva pode ser classificado como:
+- identificação da obra;
+- Quadra/Lote;
+- cliente e executora;
+- quantidade de concretagens;
+- volume controlado;
+- ensaios/resultados;
+- rastreabilidade das concretagens;
+- resultados por idade;
+- gráfico de evolução da resistência;
+- MPa de projeto;
+- análise técnica automática de apoio;
+- observações e ressalvas técnicas.
 
-`Elegível para avaliação de descarte`
+No celular, quando o navegador suporta compartilhamento de arquivos, o próprio PDF pode ser enviado pelo menu de compartilhamento.
 
-A decisão final continua manual e rastreada.
+No computador, o sistema baixa o PDF e abre o WhatsApp Web com uma mensagem pronta para o usuário anexar o arquivo.
 
-## Gestão do Tanque
+O Portal do Cliente possui a mesma geração de PDF, em versão apropriada para acompanhamento externo.
 
-A tela `/tanque` mostra:
+## Planilha atualizada e CP de 63 dias
 
-- CPs armazenados;
-- CPs de reserva;
-- CPs elegíveis;
-- rupturas próximas;
-- capacidade do tanque;
-- ocupação atual;
-- posições livres;
-- localização física dos CPs.
+Quando a fonte histórica informa que o CP de reserva já foi descartado ou já foi ensaiado aos 63 dias, a análise técnica passa a respeitar essa informação e não apresenta o CP como uma nova reserva pendente.
 
-O descarte rastreado registra:
+## Fluxo Villa Arauco preservado
 
-- CP;
-- usuário;
-- data/hora;
-- motivo;
-- foto;
-- ficha de origem.
+Continuam disponíveis:
 
-## Relatório Diário
+### Radier
+- 6 CPs
+- 2 aos 7 dias
+- 2 aos 28 dias
+- 2 aos 63 dias
+- slump configurável, perfil inicial 8 ± 1 cm
 
-A rota `/relatorios/diario` permite gerar um relatório diário com:
+### Paredes / Lajes / Oitão / Platibanda
+- 8 CPs
+- 2 inicialmente em 12 h, com reprogramação dos mesmos CPs para 19 h ou 24 h quando necessário
+- 2 aos 7 dias
+- 2 aos 28 dias
+- 2 aos 63 dias
+- perfis de slump configuráveis por processo
 
-- concretagens;
-- locais de utilização;
-- quadra e lote;
-- volume;
-- ensaios realizados;
-- idades;
-- horário programado quando aplicável;
-- carga;
-- resistência;
-- responsável;
-- fotos.
-
-Pode ser impresso/salvo em PDF pelo navegador e compartilhado.
-
-## Portal do Cliente
-
-O Portal do Cliente permite acompanhamento em tempo real das obras liberadas:
-
-- progresso;
-- volume;
-- ensaios;
-- laudos;
-- mapa;
-- quadras/lotes;
-- detalhes resumidos de cada lote.
-
-Informações internas de tanque, descarte e decisões operacionais permanecem restritas à Solocontrol.
-
-## Firebase
-
-Variáveis esperadas no Vercel:
-
-```text
-NEXT_PUBLIC_FIREBASE_API_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-NEXT_PUBLIC_FIREBASE_PROJECT_ID
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-NEXT_PUBLIC_FIREBASE_APP_ID
-```
-
-Opcional:
-
-```text
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY
-```
-
-Durante a validação, mantenha as regras atuais do piloto.
-
-Não publique ainda:
-
-```text
-firestore.production.rules
-storage.production.rules
-```
-
-até validar usuários nominais, permissões e acessos.
-
-## Publicação
-
-Leia:
-
-`INSTRUCOES-ATUALIZACAO-v0.5.1.md`
-
-A orientação principal é: publicar somente a v0.5.1.
+Os critérios de MPa e a regra do par de CPs permanecem configuráveis na obra.
 
 ## Compatibilidade
 
-Os registros históricos já importados continuam disponíveis.
+Os registros históricos antigos continuam funcionando.
 
-Registros antigos sem horário continuam usando datas diárias.
+A atualização de rupturas complementa os registros existentes em vez de apagá-los.
 
-Novas fichas passam a poder armazenar:
+Nenhuma linha da nova planilha é simplesmente descartada: registros que não podem ser ligados com segurança a Quadra/Lote são preservados separadamente.
 
-- data de moldagem;
-- horário de moldagem;
-- valor da idade;
-- unidade (horas/dias);
-- data/hora programada do rompimento.
+## Dependência nova
 
-## Segurança técnica
+A v0.7.0 utiliza `jspdf` para gerar o relatório técnico em PDF no navegador.
 
-Alertas automáticos, análises rápidas e sugestões de avaliação de descarte são ferramentas de apoio à gestão.
+O Vercel instalará essa dependência automaticamente a partir do `package.json`.
 
-Critérios de aceitação, tolerâncias de idade, descarte de reserva e aprovação técnica devem seguir os documentos aplicáveis à obra, procedimentos internos e decisão do responsável técnico.
+## Segurança
 
-## Verificação do pacote
+Durante a validação mantenha as regras atuais do piloto.
 
-Os arquivos TypeScript/TSX foram submetidos a verificação sintática/transpilação antes do empacotamento. O build final com as dependências do Next.js/Firebase será executado pelo Vercel.
+Ainda não publique:
+
+- `firestore.production.rules`
+- `storage.production.rules`
+
+até os usuários nominais/perfis estarem testados.
+
+## Validação do pacote
+
+Foram executadas:
+
+- verificação estrutural de tipos dos arquivos internos;
+- transpilação/sintaxe dos 42 arquivos TypeScript/TSX;
+- conferência da base JSON embutida com 1.323 linhas.
+
+O build final com Next.js/Firebase/jsPDF será executado pelo Vercel no deploy.

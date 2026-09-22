@@ -140,7 +140,7 @@ export async function parseHistoricalWorkbook(file: File, work?: Work): Promise<
         historicalState, importedSheet:sheetName,
         concreteNumber:String(r[0] ?? '').trim(), block, lot:String(r[3] ?? '').trim(),
         reportNumber:labReport || undefined, labSheet:labSheet || undefined,
-        receivedAt:moldedAt, moldedAt,
+        receivedAt:moldedAt, collectedAt:moldedAt, moldedAt,
         supplier:String(r[5] ?? '').trim() || undefined,
         invoice:String(r[6] ?? '').trim() || undefined,
         volumeM3: volume ? String(volume).replace('.',',') : undefined,

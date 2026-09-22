@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, BarChart3, Building2, CheckCircle2, FlaskConical, MapPinned, X } from 'lucide-react';
+import { Building2, FileDown, MapPinned, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
@@ -8,8 +8,9 @@ import StrengthEvolutionChart from '@/components/StrengthEvolutionChart';
 import { listSamples } from '@/lib/store';
 import { Sample } from '@/lib/types';
 import { lotTechnicalSummary } from '@/lib/technical-analysis';
+import { downloadLotTechnicalPdf, shareLotTechnicalPdf } from '@/lib/lot-report-pdf';
 import { formatDate, ruptureAgeLabel, ruptureScheduleLabel } from '@/lib/utils';
-import { normalizeElementGroup, sampleVolume } from '@/lib/work-analytics';
+import { normalizeElementGroup, sampleCollectionDate, sampleVolume } from '@/lib/work-analytics';
 import { processTypeLabel, sampleProcessLabel, sampleProcessType } from '@/lib/process-profiles';
 import { extractLots, normalizeBlock, normalizeLot, VILLA_ARAUCO_BLOCKS, VILLA_ARAUCO_ELEMENTS } from '@/lib/villa-arauco';
 
@@ -20,6 +21,7 @@ export default function MapaPage(){
   const [element,setElement]=useState<string>('RADIER');
   const [selected,setSelected]=useState<LotRef|null>(null);
   const [tab,setTab]=useState<'resumo'|'concretagens'|'rompimentos'|'grafico'|'analise'>('resumo');
+  const [reportBusy,setReportBusy]=useState<'pdf'|'share'|''>('');
   const { selectedWorkId, selectedWork, works, setSelectedWorkId } = useWorkScope();
 
   useEffect(()=>{listSamples().then(setSamples)},[]);
@@ -55,7 +57,23 @@ export default function MapaPage(){
   const selectedRecords=selected?records(selected.block,selected.lot,element):[];
   const lotSummary=useMemo(()=>selected?lotTechnicalSummary(lotRecords,selectedWork):undefined,[selected,lotRecords,selectedWork]);
   const totalLotVolume=lotRecords.reduce((sum,s)=>sum+sampleVolume(s),0);
-  const totalResults=lotRecords.reduce((sum,s)=>sum+s.ruptures.filter(r=>r.resistanceMpa!==undefined||r.measurements?.length).length,0);
+  const totalResults=lotRecords.reduce((sum,s)=>sum+s.ruptures.filter(r=>r.resistanceMpa!==undefined||r.measurements?.length||r.importedResultsMpa?.length).length,0);
+
+  async function generatePdf(){
+    if(!selected||!selectedWork||!lotRecords.length)return;
+    setReportBusy('pdf');
+    try{await downloadLotTechnicalPdf({work:selectedWork,block:selected.block,lot:selected.lot,samples:lotRecords})}
+    catch(error){console.error(error);alert('Não foi possível gerar o PDF. Tente novamente.')}
+    finally{setReportBusy('')}
+  }
+
+  async function sharePdf(){
+    if(!selected||!selectedWork||!lotRecords.length)return;
+    setReportBusy('share');
+    try{await shareLotTechnicalPdf({work:selectedWork,block:selected.block,lot:selected.lot,samples:lotRecords})}
+    catch(error){console.error(error);alert('Não foi possível compartilhar o relatório.')}
+    finally{setReportBusy('')}
+  }
 
   if(selectedWorkId==='all'){
     return <div className="page-stack">
@@ -112,19 +130,19 @@ export default function MapaPage(){
             <div className="lot-elements-summary">
               {elements.map(el=>{const rs=records(selected.block,selected.lot,el);if(!rs.length)return null;return <div key={el}><span>{el}</span><strong>{rs.length} registro(s)</strong><small>{rs.reduce((sum,s)=>sum+sampleVolume(s),0).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</small></div>})}
             </div>
-            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Elemento</th><th>NF</th><th>Volume</th><th>Laudo</th><th>Status</th><th></th></tr></thead><tbody>{lotRecords.sort((a,b)=>b.moldedAt.localeCompare(a.moldedAt)).map(s=><tr key={s.id}><td>{formatDate(s.moldedAt)}</td><td>{normalizeElementGroup(s.element)}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.reportNumber||'—'}</td><td><span className={`status ${s.historicalState==='sem_controle'?'atrasado':'concluido'}`}>{s.historicalState==='sem_controle'?'Sem controle':'Controlado'}</span></td><td><Link className="text-link" href={`/amostras/${s.id}`}>Abrir ficha</Link></td></tr>)}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Elemento</th><th>NF</th><th>Volume</th><th>Laudo</th><th>Status</th><th></th></tr></thead><tbody>{[...lotRecords].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}{s.collectedTime?<><br/><small>{s.collectedTime}</small></>:null}</td><td>{normalizeElementGroup(s.element)}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.reportNumber||'—'}</td><td><span className={`status ${s.historicalState==='sem_controle'?'atrasado':'concluido'}`}>{s.historicalState==='sem_controle'?'Sem controle':'Controlado'}</span></td><td><Link className="text-link" href={`/amostras/${s.id}`}>Abrir ficha</Link></td></tr>)}</tbody></table></div>
           </>}
 
-          {tab==='concretagens'&&<div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Ficha/Laudo</th></tr></thead><tbody>{lotRecords.map(s=><tr key={s.id}><td>{formatDate(s.moldedAt)}{s.moldedTime?<><br/><small>{s.moldedTime}</small></>:null}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:s.slumpMm?`${s.slumpMm} mm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:selectedWork?.defaultStrengthMpa?`${selectedWork.defaultStrengthMpa} MPa`:'—'}</td><td>{s.physicalFormNumber||s.reportNumber||'—'}</td></tr>)}</tbody></table></div>}
+          {tab==='concretagens'&&<div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Ficha/Laudo</th></tr></thead><tbody>{lotRecords.map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}{s.collectedTime?<><br/><small>{s.collectedTime}</small></>:s.moldedTime?<><br/><small>{s.moldedTime}</small></>:null}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:s.slumpMm?`${s.slumpMm} mm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:selectedWork?.defaultStrengthMpa?`${selectedWork.defaultStrengthMpa} MPa`:'—'}</td><td>{s.physicalFormNumber||s.reportNumber||'—'}</td></tr>)}</tbody></table></div>}
 
-          {tab==='rompimentos'&&<div className="table-wrap"><table><thead><tr><th>Ficha</th><th>Processo</th><th>Idade</th><th>Programado</th><th>CPs / resultados</th><th>Média</th><th>Status</th></tr></thead><tbody>{lotRecords.flatMap(s=>s.ruptures.map(r=><tr key={`${s.id}-${r.id}`}><td>{s.labelBase}</td><td>{sampleProcessLabel(s)}</td><td>{ruptureAgeLabel(r)}</td><td>{ruptureScheduleLabel(r)}</td><td>{r.measurements?.length?r.measurements.map(m=>`${m.specimenLabel||'CP'}: ${m.load} ${m.loadUnit} → ${m.resistanceMpa.toFixed(2)} MPa`).join(' • '):r.load!==undefined?`${r.load} ${r.loadUnit||''}`:'—'}</td><td>{r.resistanceMpa!==undefined?`${r.resistanceMpa.toFixed(2)} MPa`:'—'}</td><td><span className={`status ${r.status}`}>{r.status.replace('_',' ')}</span></td></tr>))}</tbody></table></div>}
+          {tab==='rompimentos'&&<div className="table-wrap"><table><thead><tr><th>Ficha</th><th>Processo</th><th>Idade</th><th>Programado</th><th>CPs / resultados</th><th>Média</th><th>Status</th></tr></thead><tbody>{lotRecords.flatMap(s=>s.ruptures.map(r=><tr key={`${s.id}-${r.id}`}><td>{s.labelBase}</td><td>{sampleProcessLabel(s)}</td><td>{ruptureAgeLabel(r)}</td><td>{ruptureScheduleLabel(r)}</td><td>{r.measurements?.length?r.measurements.map(m=>`${m.specimenLabel||'CP'}: ${m.load} ${m.loadUnit} → ${m.resistanceMpa.toFixed(2)} MPa`).join(' • '):r.importedResultsMpa?.length?r.importedResultsMpa.map((v,i)=>`Resultado ${i+1}: ${v.toFixed(2)} MPa`).join(' • '):r.load!==undefined?`${r.load} ${r.loadUnit||''}`:'—'}</td><td>{r.resistanceMpa!==undefined?`${r.resistanceMpa.toFixed(2)} MPa`:'—'}</td><td><span className={`status ${r.status}`}>{r.status.replace('_',' ')}</span></td></tr>))}</tbody></table></div>}
 
           {tab==='grafico'&&<StrengthEvolutionChart samples={lotRecords} work={selectedWork} title={`Evolução da resistência — Q${selected.block} L${selected.lot}`} maxSeries={6}/>}
 
-          {tab==='analise'&&<div className="technical-sample-list">{lotSummary.analyses.map(({sample,analysis,formRelease})=><article key={sample.id} className={`technical-sample-item tone-${analysis.tone}`}><div className="technical-sample-head"><div><b>{sample.labelBase}</b><span>{normalizeElementGroup(sample.element)} • {formatDate(sample.moldedAt)}</span></div><Link href={`/amostras/${sample.id}`} className="text-link">Abrir ficha</Link></div><div className="technical-analysis-grid"><div><span>Referência</span><strong>{analysis.targetMpa?`${analysis.targetMpa.toFixed(2)} MPa`:'—'}</strong></div><div><span>{analysis.controlAgeDays} dias</span><strong>{analysis.controlAverage!==undefined?`${analysis.controlAverage.toFixed(2)} MPa`:'Aguardando'}</strong></div><div><span>Mín./Máx.</span><strong>{analysis.controlMin!==undefined?`${analysis.controlMin.toFixed(2)} / ${analysis.controlMax?.toFixed(2)} MPa`:'—'}</strong></div><div><span>Reserva {analysis.reserveAgeDays}d</span><strong>{analysis.reserveDecision==='eligible'?'Avaliar descarte':analysis.reserveDecision==='keep'?'Manter':'Aguardar'}</strong></div></div><div className="technical-analysis-message"><b>{analysis.headline}</b><span>{analysis.summary}</span></div>{formRelease.applicable&&<div className={`form-release-mini tone-${formRelease.tone}`}><b>{formRelease.headline}</b><span>{formRelease.summary}</span></div>}</article>)}</div>}
+          {tab==='analise'&&<><div className="analysis-export-bar"><div><b>Relatório técnico do lote</b><span>Gere o PDF completo da análise ou compartilhe o arquivo pelo celular/WhatsApp.</span></div><div className="heading-actions"><button className="button secondary" disabled={Boolean(reportBusy)} onClick={generatePdf}><FileDown size={16}/>{reportBusy==='pdf'?'Gerando...':'Gerar PDF'}</button><button className="button primary" disabled={Boolean(reportBusy)} onClick={sharePdf}><Share2 size={16}/>{reportBusy==='share'?'Preparando...':'PDF / WhatsApp'}</button></div></div><div className="technical-sample-list">{lotSummary.analyses.map(({sample,analysis,formRelease})=><article key={sample.id} className={`technical-sample-item tone-${analysis.tone}`}><div className="technical-sample-head"><div><b>{sample.labelBase}</b><span>{normalizeElementGroup(sample.element)} • {formatDate(sampleCollectionDate(sample))}</span></div><Link href={`/amostras/${sample.id}`} className="text-link">Abrir ficha</Link></div><div className="technical-analysis-grid"><div><span>Referência</span><strong>{analysis.targetMpa?`${analysis.targetMpa.toFixed(2)} MPa`:'—'}</strong></div><div><span>{analysis.controlAgeDays} dias</span><strong>{analysis.controlAverage!==undefined?`${analysis.controlAverage.toFixed(2)} MPa`:'Aguardando'}</strong></div><div><span>Mín./Máx.</span><strong>{analysis.controlMin!==undefined?`${analysis.controlMin.toFixed(2)} / ${analysis.controlMax?.toFixed(2)} MPa`:'—'}</strong></div><div><span>Reserva {analysis.reserveAgeDays}d</span><strong>{analysis.reserveDecision==='eligible'?'Avaliar descarte':analysis.reserveDecision==='keep'?'Manter':'Aguardar'}</strong></div></div><div className="technical-analysis-message"><b>{analysis.headline}</b><span>{analysis.summary}</span></div>{formRelease.applicable&&<div className={`form-release-mini tone-${formRelease.tone}`}><b>{formRelease.headline}</b><span>{formRelease.summary}</span></div>}</article>)}</div></>}
         </div>
 
-        <div className="modal-footer"><span>Análise automática de apoio à gestão. A aceitação técnica deve seguir normas, projeto, contrato e responsável técnico.</span><button className="button secondary" onClick={()=>setSelected(null)}>Fechar</button></div>
+        <div className="modal-footer"><span>Análise automática de apoio à gestão. A aceitação técnica deve seguir normas, projeto, contrato e responsável técnico.</span><div className="heading-actions"><button className="button ghost" disabled={Boolean(reportBusy)} onClick={generatePdf}><FileDown size={15}/>PDF</button><button className="button secondary" disabled={Boolean(reportBusy)} onClick={sharePdf}><Share2 size={15}/>WhatsApp</button><button className="button secondary" onClick={()=>setSelected(null)}>Fechar</button></div></div>
       </section>
     </div>}
   </div>

@@ -56,6 +56,8 @@ export function ruptureResults(rupture?: RuptureEvent): number[] {
   if (!rupture) return [];
   const measurements = rupture.measurements?.map(m => m.resistanceMpa).filter(v => Number.isFinite(v)) || [];
   if (measurements.length) return measurements;
+  const imported = rupture.importedResultsMpa?.filter(v => Number.isFinite(v)) || [];
+  if (imported.length) return imported;
   return rupture.resistanceMpa !== undefined && Number.isFinite(rupture.resistanceMpa) ? [rupture.resistanceMpa] : [];
 }
 
@@ -114,6 +116,26 @@ export function analyzeSample(sample: Sample, work?: Work): TechnicalAnalysis {
       reserveDecision:'not_applicable', tone:'neutral',
       headline:'Sem CP de reserva configurado',
       summary:`Esta ficha não possui ruptura de reserva programada.`,
+    };
+  }
+
+  if (sample.reserveDisposition==='discarded') {
+    return {
+      targetMpa, controlAgeDays, reserveAgeDays, thresholdMpa, evaluationMode, controlResults,
+      controlValue, controlAverage, controlMin, controlMax, trend7toControlPct,
+      reserveDecision:'not_applicable', tone:'good',
+      headline:'CP de reserva registrado como descartado',
+      summary:'A planilha histórica atualizada registra o descarte do CP de reserva. O registro foi preservado para rastreabilidade e não entra como reserva pendente.',
+    };
+  }
+
+  if (sample.reserveDisposition==='tested') {
+    return {
+      targetMpa, controlAgeDays, reserveAgeDays, thresholdMpa, evaluationMode, controlResults,
+      controlValue, controlAverage, controlMin, controlMax, trend7toControlPct,
+      reserveDecision:'not_applicable', tone:'neutral',
+      headline:`Reserva de ${reserveAgeDays} dias já ensaiada`,
+      summary:'Há resultado registrado para a idade de reserva; portanto, este CP não deve ser tratado como reserva disponível para descarte antecipado.',
     };
   }
 

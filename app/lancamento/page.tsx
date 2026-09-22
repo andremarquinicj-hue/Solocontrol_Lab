@@ -27,7 +27,7 @@ import {
 } from '@/lib/utils';
 
 const initial = {
-  workId:'', reportNumber:'', physicalFormNumber:'', receivedAt:isoToday(), moldedAt:isoToday(), moldedTime:'',
+  workId:'', reportNumber:'', physicalFormNumber:'', receivedAt:isoToday(), collectedAt:isoToday(), collectedTime:'', moldedAt:isoToday(), moldedTime:'',
   supplier:'', invoice:'', volumeM3:'', aggregate:'', slumpCm:'',
   specifiedStrengthMpa:'',
   sampleType:'Concreto' as const, processType:'OUTRO' as ConcreteProcessType, element:'', block:'', lot:'', location:'',
@@ -139,18 +139,26 @@ export default function QuickEntryPage() {
   const input=(key:string)=>(e:any)=>setForm({...form,[key]:e.target.type==='number'?Number(e.target.value):e.target.value});
   const requiredPhotos=['ficha','coleta','etiqueta'];
   const canAdvance1=Boolean(
-    form.workId&&form.moldedAt&&form.labelBase&&form.cpQuantity>0&&
+    form.workId&&form.collectedAt&&form.moldedAt&&form.labelBase&&form.cpQuantity>0&&
     (!villa||form.processType!=='OUTRO')&&
     (!hasHourlyAge||form.moldedTime)
   );
   const canAdvance2=activePlan.length>0&&expectedCp===Number(form.cpQuantity);
   const canAdvance3=requiredPhotos.every(k=>files[k]);
 
+  function changeCollectionDate(value:string){
+    setForm(current=>({
+      ...current,
+      collectedAt:value,
+      moldedAt:(!current.moldedAt || current.moldedAt===current.collectedAt) ? value : current.moldedAt,
+    }));
+  }
+
   function duplicatePrevious(){
     const raw=localStorage.getItem('solocontrol.lastQuickEntry');if(!raw)return;
     try{
       const prev=JSON.parse(raw);
-      setForm({...form,...prev,receivedAt:isoToday(),moldedAt:isoToday(),moldedTime:'',labelBase:'',reportNumber:'',physicalFormNumber:''});
+      setForm({...form,...prev,receivedAt:isoToday(),collectedAt:isoToday(),collectedTime:'',moldedAt:isoToday(),moldedTime:'',labelBase:'',reportNumber:'',physicalFormNumber:''});
     }catch{}
   }
 
@@ -214,6 +222,8 @@ export default function QuickEntryPage() {
         reportNumber:form.reportNumber||undefined,
         physicalFormNumber:form.physicalFormNumber||undefined,
         receivedAt:form.receivedAt,
+        collectedAt:form.collectedAt,
+        collectedTime:form.collectedTime||undefined,
         moldedAt:form.moldedAt,
         moldedTime:form.moldedTime||undefined,
         supplier:form.supplier||undefined,
@@ -280,7 +290,7 @@ export default function QuickEntryPage() {
       <div className="smart-strip">
         <button onClick={()=>document.getElementById('labelBase')?.focus()}><ScanLine size={16}/>Etiqueta</button>
         <button onClick={duplicatePrevious}><Copy size={16}/>Duplicar dados da última ficha</button>
-        <button onClick={()=>setForm({...form,receivedAt:isoToday(),moldedAt:isoToday()})}><WandSparkles size={16}/>Datas de hoje</button>
+        <button onClick={()=>setForm({...form,receivedAt:isoToday(),collectedAt:isoToday(),moldedAt:isoToday()})}><WandSparkles size={16}/>Datas de hoje</button>
       </div>
 
       {step===1&&<>
@@ -304,6 +314,8 @@ export default function QuickEntryPage() {
           <label>Nº do relatório<input value={form.reportNumber} onChange={input('reportNumber')} placeholder="Quando aplicável"/></label>
           <label>Data de recebimento<input type="date" value={form.receivedAt} onChange={input('receivedAt')}/></label>
 
+          <label>Data da coleta / amostragem *<input type="date" value={form.collectedAt} onChange={e=>changeCollectionDate(e.target.value)}/><small>Use a data real da coleta, mesmo quando a ficha for lançada dias depois.</small></label>
+          <label>Horário da coleta<input type="time" value={form.collectedTime} onChange={input('collectedTime')}/></label>
           <label>Concreteira / fornecedor<input value={form.supplier} onChange={input('supplier')} placeholder="Ex.: COPLAN / concreteira"/></label>
           <label>Nota fiscal<input value={form.invoice} onChange={input('invoice')} placeholder="NF"/></label>
           <label>Betoneira / caminhão<input value={form.truckMixer} onChange={input('truckMixer')} placeholder="Nº da betoneira"/></label>
@@ -375,6 +387,7 @@ export default function QuickEntryPage() {
             <dt>Processo</dt><dd>{processTypeLabel(form.processType)}</dd>
             <dt>Quadra / Lote</dt><dd>{form.block||form.lot?`Q${form.block||'—'} / L${form.lot||'—'}`:'—'}</dd>
             <dt>Etiqueta</dt><dd>{normalizeLabel(form.labelBase)}</dd>
+            <dt>Coleta</dt><dd>{form.collectedAt}{form.collectedTime?` às ${form.collectedTime}`:''}</dd>
             <dt>Moldagem</dt><dd>{form.moldedAt}{form.moldedTime?` às ${form.moldedTime}`:''}</dd>
             <dt>Slump</dt><dd>{form.slumpCm?`${form.slumpCm} cm — ${slumpResult.message}`:'Não informado'}</dd>
             <dt>MPa de projeto</dt><dd>{form.specifiedStrengthMpa||configuredProjectMpa?`${form.specifiedStrengthMpa||configuredProjectMpa} MPa`:'Não configurado'}</dd>

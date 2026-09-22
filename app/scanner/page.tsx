@@ -7,7 +7,7 @@ import { listSamples } from '@/lib/store';
 import { Sample } from '@/lib/types';
 
 export default function ScannerPage(){
-  const [samples,setSamples]=useState<Sample[]>([]);const[value,setValue]=useState('');const[message,setMessage]=useState('');const[scanning,setScanning]=useState(false);const videoRef=useRef<HTMLVideoElement>(null);const streamRef=useRef<MediaStream>();const router=useRouter();
+  const [samples,setSamples]=useState<Sample[]>([]);const[value,setValue]=useState('');const[message,setMessage]=useState('');const[scanning,setScanning]=useState(false);const videoRef=useRef<HTMLVideoElement|null>(null);const streamRef=useRef<MediaStream|null>(null);const router=useRouter();
   useEffect(()=>{listSamples().then(setSamples);return()=>streamRef.current?.getTracks().forEach(t=>t.stop())},[]);
   function find(raw:string){const q=raw.trim().replace(/\s+/g,'').toUpperCase();if(!q)return;const found=samples.find(s=>[s.labelBase,...s.cpLabels].some(label=>label.replace(/\s+/g,'').toUpperCase()===q));if(found){router.push(`/amostras/${found.id}`)}else setMessage(`Etiqueta ${raw} não localizada.`)}
   async function scan(){

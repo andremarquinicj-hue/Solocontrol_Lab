@@ -3,8 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  BarChart3, Building2, CheckCircle2, FileCheck2, FlaskConical,
-  LockKeyhole, MapPinned, PackageCheck, Printer, ShieldCheck, X
+  BarChart3, Building2, CheckCircle2, FileCheck2, FileDown, FlaskConical,
+  LockKeyhole, MapPinned, PackageCheck, Share2, ShieldCheck, X
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
@@ -14,10 +14,11 @@ import { listSamples, listWorks } from '@/lib/store';
 import { db, ensureFirebaseUser, firebaseConfigured } from '@/lib/firebase';
 import { Sample, Work } from '@/lib/types';
 import { lotTechnicalSummary } from '@/lib/technical-analysis';
+import { downloadLotTechnicalPdf, shareLotTechnicalPdf } from '@/lib/lot-report-pdf';
 import { processTypeLabel, sampleProcessLabel, sampleProcessType } from '@/lib/process-profiles';
 import {
   completedTests, elementProgress, formatElementLabel, normalizeElementGroup, overallProgress,
-  sampleVolume, uniqueReports
+  sampleCollectionDate, sampleVolume, uniqueReports
 } from '@/lib/work-analytics';
 import { extractLots, normalizeBlock, VILLA_ARAUCO_BLOCKS } from '@/lib/villa-arauco';
 import { formatDate, ruptureAgeLabel } from '@/lib/utils';
@@ -31,6 +32,7 @@ export default function ClientPortal(){
   const [workId,setWorkId]=useState('');
   const [element,setElement]=useState('RADIER');
   const [selectedLot,setSelectedLot]=useState<LotRef|null>(null);
+  const [reportBusy,setReportBusy]=useState<'pdf'|'share'|''>('');
 
   useEffect(()=>{
     if(isPilot){setWorks([]);setSamples([]);setWorkId('');return}
@@ -67,11 +69,6 @@ export default function ClientPortal(){
     listSamples().then(all=>setSamples(all.filter(s=>s.workId===workId)));
     return()=>clearInterval(timer);
   },[workId,isPilot]);
-
-  if(isPilot)return <main className="client-portal">
-    <header className="client-header"><div><Image src="/logo-solocontrol.png" width={200} height={100} alt="Solocontrol"/><div><b>Portal de Acompanhamento da Obra</b><span>Acesso protegido aos dados do cliente.</span></div></div></header>
-    <section className="client-empty"><LockKeyhole size={46}/><h1>Login necessário</h1><p>Dados reais da obra não são exibidos no modo anônimo. Entre com uma conta de cliente autorizada.</p><Link href="/login" className="button primary">Entrar no portal</Link></section>
-  </main>;
 
   const work=works.find(w=>w.id===workId);
   const data=useMemo(()=>samples.filter(s=>s.workId===workId),[samples,workId]);
@@ -121,6 +118,27 @@ export default function ClientPortal(){
   }
   const lotStatus=publicStatus();
 
+  async function clientPdf(){
+    if(!selectedLot||!work||!selectedLotRecords.length)return;
+    setReportBusy('pdf');
+    try{await downloadLotTechnicalPdf({work,block:selectedLot.block,lot:selectedLot.lot,samples:selectedLotRecords,clientView:true})}
+    catch(error){console.error(error);alert('Não foi possível gerar o PDF.')}
+    finally{setReportBusy('')}
+  }
+
+  async function clientShare(){
+    if(!selectedLot||!work||!selectedLotRecords.length)return;
+    setReportBusy('share');
+    try{await shareLotTechnicalPdf({work,block:selectedLot.block,lot:selectedLot.lot,samples:selectedLotRecords,clientView:true})}
+    catch(error){console.error(error);alert('Não foi possível compartilhar o relatório.')}
+    finally{setReportBusy('')}
+  }
+
+  if(isPilot)return <main className="client-portal">
+    <header className="client-header"><div><Image src="/logo-solocontrol.png" width={200} height={100} alt="Solocontrol"/><div><b>Portal de Acompanhamento da Obra</b><span>Acesso protegido aos dados do cliente.</span></div></div></header>
+    <section className="client-empty"><LockKeyhole size={46}/><h1>Login necessário</h1><p>Dados reais da obra não são exibidos no modo anônimo. Entre com uma conta de cliente autorizada.</p><Link href="/login" className="button primary">Entrar no portal</Link></section>
+  </main>;
+
   return <main className="client-portal">
     <header className="client-header">
       <div><Image src="/logo-solocontrol.png" width={200} height={100} alt="Solocontrol"/><div><b>Portal de Acompanhamento da Obra</b><span>Controle tecnológico, rastreabilidade e progresso em tempo real.</span></div></div>
@@ -162,7 +180,7 @@ export default function ClientPortal(){
 
       <section className="client-section">
         <div className="client-section-title"><div><span>ATIVIDADE RECENTE</span><h2>Últimos controles registrados</h2></div></div>
-        <div className="table-wrap"><table><thead><tr><th>Data</th><th>Quadra/Lote</th><th>Processo</th><th>Volume</th><th>Slump</th><th>Laudo/Ficha</th><th>Status</th></tr></thead><tbody>{[...data].sort((a,b)=>b.moldedAt.localeCompare(a.moldedAt)).slice(0,20).map(s=><tr key={s.id}><td>{formatDate(s.moldedAt)}</td><td>{s.block?`Q${s.block}`:'—'} {s.lot?`L${s.lot}`:''}</td><td>{sampleProcessLabel(s)}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td><td><span className={`status ${s.historicalState==='sem_controle'?'pendente':'concluido'}`}>{s.historicalState==='sem_controle'?'Em acompanhamento':'Registrado'}</span></td></tr>)}</tbody></table></div>
+        <div className="table-wrap"><table><thead><tr><th>Data</th><th>Quadra/Lote</th><th>Processo</th><th>Volume</th><th>Slump</th><th>Laudo/Ficha</th><th>Status</th></tr></thead><tbody>{[...data].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).slice(0,20).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{s.block?`Q${s.block}`:'—'} {s.lot?`L${s.lot}`:''}</td><td>{sampleProcessLabel(s)}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td><td><span className={`status ${s.historicalState==='sem_controle'?'pendente':'concluido'}`}>{s.historicalState==='sem_controle'?'Em acompanhamento':'Registrado'}</span></td></tr>)}</tbody></table></div>
       </section>
     </>}
 
@@ -188,7 +206,7 @@ export default function ClientPortal(){
         <div className="client-report-body">
           <section>
             <div className="client-report-section-title"><span>01</span><div><b>Resumo das concretagens</b><small>Rastreabilidade por etapa construtiva</small></div></div>
-            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Referência</th></tr></thead><tbody>{[...selectedLotRecords].sort((a,b)=>a.moldedAt.localeCompare(b.moldedAt)).map(s=><tr key={s.id}><td>{formatDate(s.moldedAt)}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:work.defaultStrengthMpa?`${work.defaultStrengthMpa} MPa`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td></tr>)}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Referência</th></tr></thead><tbody>{[...selectedLotRecords].sort((a,b)=>sampleCollectionDate(a).localeCompare(sampleCollectionDate(b))).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:work.defaultStrengthMpa?`${work.defaultStrengthMpa} MPa`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td></tr>)}</tbody></table></div>
           </section>
 
           <section>
@@ -198,7 +216,7 @@ export default function ClientPortal(){
 
           <section>
             <div className="client-report-section-title"><span>03</span><div><b>Resultados dos ensaios</b><small>Valores individuais quando disponíveis</small></div></div>
-            <div className="table-wrap"><table><thead><tr><th>Ficha</th><th>Processo</th><th>Idade</th><th>CPs / resultados</th><th>Média</th><th>Situação</th></tr></thead><tbody>{selectedLotRecords.flatMap(s=>s.ruptures.map(r=><tr key={`${s.id}-${r.id}`}><td>{s.labelBase}</td><td>{sampleProcessLabel(s)}</td><td>{ruptureAgeLabel(r)}</td><td>{r.measurements?.length?r.measurements.map(m=>`${m.specimenLabel||'CP'}: ${m.load} ${m.loadUnit} → ${m.resistanceMpa.toFixed(2)} MPa`).join(' • '):'—'}</td><td>{r.resistanceMpa!==undefined?`${r.resistanceMpa.toFixed(2)} MPa`:'—'}</td><td><span className={`status ${r.status==='concluido'?'concluido':'pendente'}`}>{r.status==='concluido'?'Concluído':'Programado'}</span></td></tr>))}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Ficha</th><th>Processo</th><th>Idade</th><th>CPs / resultados</th><th>Média</th><th>Situação</th></tr></thead><tbody>{selectedLotRecords.flatMap(s=>s.ruptures.map(r=><tr key={`${s.id}-${r.id}`}><td>{s.labelBase}</td><td>{sampleProcessLabel(s)}</td><td>{ruptureAgeLabel(r)}</td><td>{r.measurements?.length?r.measurements.map(m=>`${m.specimenLabel||'CP'}: ${m.load} ${m.loadUnit} → ${m.resistanceMpa.toFixed(2)} MPa`).join(' • '):r.importedResultsMpa?.length?r.importedResultsMpa.map((v,i)=>`Resultado ${i+1}: ${v.toFixed(2)} MPa`).join(' • '):r.resistanceMpa!==undefined?`${r.resistanceMpa.toFixed(2)} MPa`:'—'}</td><td>{r.resistanceMpa!==undefined?`${r.resistanceMpa.toFixed(2)} MPa`:'—'}</td><td><span className={`status ${r.status==='concluido'?'concluido':'pendente'}`}>{r.status==='concluido'?'Concluído':'Programado'}</span></td></tr>))}</tbody></table></div>
           </section>
 
           {lotPhotos.length>0&&<section>
@@ -207,7 +225,7 @@ export default function ClientPortal(){
           </section>}
         </div>
 
-        <div className="modal-footer"><span>Portal de acompanhamento Solocontrol. Resultados formais devem ser interpretados conforme projeto, especificações, procedimentos e relatórios técnicos aplicáveis.</span><div className="heading-actions"><button className="button ghost" onClick={()=>window.print()}><Printer size={15}/>Imprimir / PDF</button><button className="button secondary" onClick={()=>setSelectedLot(null)}>Fechar relatório</button></div></div>
+        <div className="modal-footer"><span>Portal de acompanhamento Solocontrol. Resultados formais devem ser interpretados conforme projeto, especificações, procedimentos e relatórios técnicos aplicáveis.</span><div className="heading-actions"><button className="button ghost" disabled={Boolean(reportBusy)} onClick={clientPdf}><FileDown size={15}/>{reportBusy==='pdf'?'Gerando...':'Gerar PDF'}</button><button className="button primary" disabled={Boolean(reportBusy)} onClick={clientShare}><Share2 size={15}/>{reportBusy==='share'?'Preparando...':'Compartilhar'}</button><button className="button secondary" onClick={()=>setSelectedLot(null)}>Fechar relatório</button></div></div>
       </section>
     </div>}
 
