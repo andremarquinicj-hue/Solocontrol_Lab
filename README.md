@@ -1,230 +1,241 @@
-# Solocontrol Lab v0.6.0 — Operação Villa Arauco
 
-Versão consolidada para publicação. **Não é necessário subir v0.4.0, v0.5.0 ou v0.5.1 antes.**
+## v0.6.1 — correção de build
 
-A v0.6.0 foi estruturada a partir do fluxo operacional informado para a Villa Arauco/COPLAN e mantém o modo genérico para as demais obras que a Solocontrol cadastrar futuramente.
+- Corrigida a tipagem do campo **Construtora / executora** no cadastro de Obras.
+- O formulário agora inicializa e carrega corretamente `contractor`, permitindo salvar COPLAN ou outra executora sem erro no build do Vercel.
+- Nenhuma funcionalidade da v0.6.0 foi removida.
 
-## Objetivo
+# Solocontrol Lab v0.5.1
 
-O sistema foi organizado para trabalhar junto com a ficha física padrão da Solocontrol. No início, a ficha continua sendo preenchida e arquivada fisicamente para auditoria; o sistema funciona como controle operacional, rastreabilidade, agenda, análise gerencial, evidência fotográfica e portal de acompanhamento.
+Versão consolidada recomendada para publicação.
 
-## Perfil operacional — Villa Arauco
+A v0.5.1 já contém as melhorias das versões anteriores. Não é necessário publicar v0.4.0 ou v0.5.0 antes.
 
-### Radier
+## Principais módulos
 
-- 6 CPs por amostragem;
-- 2 CPs aos 7 dias;
-- 2 CPs aos 28 dias;
-- 2 CPs aos 63 dias;
-- slump operacional informado: **8 ± 1 cm**.
+- Dashboard multiobra
+- Central do Coordenador
+- Lançamento rápido de fichas
+- Amostras e rastreabilidade
+- Dossiê Técnico do Lote
+- Mapa por obra
+- Histórico / importação e exportação Excel
+- Relatório Diário com fotos
+- Portal do Cliente
+- Gestão individual de CPs
+- Gestão do Tanque / câmara de cura
+- Controle de CPs de reserva
+- Não conformidades
+- Equipamentos e calibrações
+- Scanner de etiquetas
+- Equipe e matriz de treinamento
+- Auditoria
+- Visão Executiva
+- Acessos e perfis
+- Backup JSON
+- PWA
 
-### Paredes
+## Idades de ruptura em horas e dias
 
-- 8 CPs por amostragem;
-- 2 CPs inicialmente programados para 12 h;
-- se a condição ainda não permitir o ensaio/liberação, os mesmos CPs podem ser reprogramados para 19 h ou 24 h;
-- 2 CPs aos 7 dias;
-- 2 CPs aos 28 dias;
-- 2 CPs aos 63 dias;
-- slump operacional informado: **20 ± 2 cm**.
+O sistema aceita idades como:
 
-### Lajes
+```text
+24h
+48h
+72h
+3d
+7d
+14d
+28d
+63d
+90d
+```
 
-- 8 CPs;
-- 2 CPs em baixa idade (12 h, com possibilidade de reprogramação para 19 h ou 24 h);
-- 2 CPs aos 7 dias;
-- 2 CPs aos 28 dias;
-- 2 CPs aos 63 dias;
-- slump operacional informado: **8 ± 1 cm**.
+Também aceita idades personalizadas, por exemplo:
 
-### Oitão / Platibanda
+```text
+36h
+21d
+45d
+```
 
-- 8 CPs;
-- 2 CPs em baixa idade (12 h, com possibilidade de reprogramação para 19 h ou 24 h);
-- 2 CPs aos 7 dias;
-- 2 CPs aos 28 dias;
-- 2 CPs aos 63 dias;
-- slump operacional informado: **20 ± 2 cm**.
+Em `Obras`, as idades padrão podem ser cadastradas assim:
 
-Esses valores são tratados pelo sistema como **perfil operacional configurável da obra**, não como regra normativa universal. Devem ser conferidos com projeto, especificações, procedimento da Solocontrol e requisitos do cliente.
+```text
+24h,7d,28d,63d
+```
 
-## Cadastro da obra
+- `h` = horas
+- `d` = dias
 
-Em `Obras`, a Villa Arauco pode guardar:
+### Ruptura de 24 horas
 
-- cliente;
-- construtora/executora (ex.: COPLAN);
-- metas por etapa;
-- MPa de projeto aos 28 dias;
-- MPa de baixa idade para liberação de formas por processo;
-- critério de avaliação do par (`manual`, `menor resultado` ou `média`);
-- idade principal de controle;
-- idade de reserva;
-- regra de triagem de CPs de 63 dias;
-- capacidade do tanque/câmara;
-- planta da obra;
-- liberação no Portal do Cliente.
+Quando existir uma idade em horas, o horário da moldagem é obrigatório.
 
-O modo padrão de avaliação é **manual**. O sistema não presume se o projeto exige o menor resultado ou a média do par.
+Exemplo:
 
-## Lançamento baseado na ficha física
+```text
+Moldagem: 22/09/2026 às 09:35
+Ruptura 24h: 23/09/2026 às 09:35
+```
 
-A tela `Lançamento rápido` virou uma transcrição orientada da ficha de moldagem.
+O horário programado aparece no Dashboard, Central do Coordenador, ficha, relatório diário, Dossiê Técnico e Gestão do Tanque.
 
-Ela registra, quando disponível:
+Para idades em dias sem horário de moldagem, o sistema mantém vencimento diário, sem marcar atraso artificialmente no meio do dia.
 
-- obra;
-- referência da ficha física;
-- relatório;
-- fornecedor/concreteira;
-- NF;
-- caminhão/betoneira e placa;
+## Dossiê Técnico do Lote
+
+No `Mapa da Obra`, clicar em um lote abre:
+
+- resumo técnico;
+- concretagens;
+- concreteira e NF;
 - volume;
-- brita;
-- slump medido;
-- MPa de projeto;
-- quadra/lote/local;
-- método de lançamento;
-- saída da usina;
-- chegada na obra;
-- horário do slump;
-- início de descarga;
-- data e horário de moldagem;
-- água adicionada;
-- laboratorista;
-- etiqueta;
-- fotos da ficha, coleta e etiqueta.
+- slump;
+- fck;
+- laudos;
+- cargas;
+- resultados em MPa;
+- rompimentos por idade;
+- análise automática de apoio;
+- links para as fichas completas.
 
-Ao escolher `Radier`, `Paredes`, `Laje` ou `Oitão / Platibanda`, o plano de CPs é montado automaticamente. Existe uma opção de **amostragem excepcional** caso uma ficha real tenha um plano diferente.
+A análise automática é gerencial e não substitui normas, projeto, contrato, procedimentos nem a avaliação do responsável técnico.
 
-## Slump
+## Gestão dos CPs de reserva
 
-O sistema compara o valor lançado com a faixa configurada para o processo e sinaliza:
+Cada nova ficha pode criar os CPs individualmente.
 
-- dentro da faixa;
-- abaixo;
-- acima;
-- sem critério configurado.
+Estados previstos:
 
-O alerta é gerencial e não substitui decisão técnica de campo.
+```text
+Armazenado
+Rompido
+Manter reserva
+Elegível para avaliação de descarte
+Descartado
+```
 
-## Ensaio de baixa idade e liberação de formas
+O sistema nunca descarta CP automaticamente.
 
-Para Paredes, Lajes e Oitão/Platibanda, o sistema cria o par de CPs de baixa idade.
-
-O ensaio começa programado para 12 h. Se for necessário aguardar, a própria ficha permite reprogramar os **mesmos CPs** para 19 h ou 24 h, registrando:
-
-- horário original;
-- novo horário;
-- motivo;
-- data da alteração.
-
-O sistema compara o resultado com o MPa de baixa idade configurado, mas **não libera a forma automaticamente**. A liberação continua sendo uma decisão responsável conforme projeto/procedimento.
-
-## Resultados em pares
-
-Cada CP do par recebe individualmente:
-
-- carga;
-- unidade;
-- diâmetro;
-- altura, quando registrada;
-- resistência calculada em MPa.
-
-O evento mantém os resultados individuais e uma consolidação para gráfico/relatório.
-
-## 28 dias e CP de 63 dias
-
-O sistema permite cadastrar o MPa exigido pelo projeto.
-
-Quando o resultado de controle de 28 dias atende ao critério configurado, os CPs de 63 dias passam para:
+Quando a idade principal de controle atende à referência gerencial configurada, o CP de reserva pode ser classificado como:
 
 `Elegível para avaliação de descarte`
 
-Eles **não são descartados automaticamente**. A Gestão do Tanque exige confirmação manual, usuário, motivo e foto do CP antes do descarte.
+A decisão final continua manual e rastreada.
 
 ## Gestão do Tanque
 
 A tela `/tanque` mostra:
 
 - CPs armazenados;
-- reservas de 63 dias;
+- CPs de reserva;
 - CPs elegíveis;
-- capacidade;
-- ocupação;
+- rupturas próximas;
+- capacidade do tanque;
+- ocupação atual;
 - posições livres;
-- localização física;
-- saídas previstas;
-- histórico de descartes.
+- localização física dos CPs.
 
-## Mapa e Dossiê Técnico do Lote
+O descarte rastreado registra:
 
-No mapa interno, clicar em um lote abre um dossiê com:
-
-- resumo;
-- concretagens;
-- volume;
-- processo;
-- concreteira/NF;
-- slump;
-- MPa de projeto;
-- cargas e resultados individuais;
-- rompimentos;
-- análise gerencial;
-- **gráfico de evolução da resistência/cura do concreto**.
-
-Os dados históricos antigos `PAREDES E LAJES` permanecem identificados dessa forma porque a planilha antiga não permite separar com segurança o que foi Parede e o que foi Laje. Novos lançamentos passam a registrar as etapas separadamente.
+- CP;
+- usuário;
+- data/hora;
+- motivo;
+- foto;
+- ficha de origem.
 
 ## Relatório Diário
 
-A rota `/relatorios/diario` consolida o dia com:
+A rota `/relatorios/diario` permite gerar um relatório diário com:
 
-- concretagens e locais de uso;
-- quadra/lote;
-- processo;
-- ficha física;
-- slump e situação;
+- concretagens;
+- locais de utilização;
+- quadra e lote;
 - volume;
-- ensaios;
-- resultados individuais dos CPs;
-- controle de baixa idade;
+- ensaios realizados;
+- idades;
+- horário programado quando aplicável;
+- carga;
+- resistência;
+- responsável;
 - fotos.
 
-Pode ser impresso/salvo em PDF pelo navegador e compartilhado com o grupo.
+Pode ser impresso/salvo em PDF pelo navegador e compartilhado.
 
 ## Portal do Cliente
 
-O Portal do Cliente foi estruturado como apresentação profissional da Solocontrol:
+O Portal do Cliente permite acompanhamento em tempo real das obras liberadas:
 
-- dashboard da obra;
-- volume controlado;
-- concretagens;
+- progresso;
+- volume;
 - ensaios;
-- laudos/referências;
-- progresso por etapa;
-- mapa de quadras/lotes;
-- atualização em tempo real pelo Firebase;
-- relatório técnico de acompanhamento ao clicar no lote;
-- gráfico de evolução da resistência;
-- resultados e evidências liberadas;
-- impressão/PDF do relatório do lote.
+- laudos;
+- mapa;
+- quadras/lotes;
+- detalhes resumidos de cada lote.
 
-O cliente **não vê** informações internas de tanque, descarte, auditoria ou decisões operacionais.
-
-## Segurança técnica
-
-Os alertas e análises automáticas são ferramentas de apoio. Critérios de aceitação, tolerâncias, liberação de formas e descarte de reservas devem seguir projeto, especificações, procedimentos, contrato, normas aplicáveis e responsável técnico.
+Informações internas de tanque, descarte e decisões operacionais permanecem restritas à Solocontrol.
 
 ## Firebase
 
-A v0.6.0 não exige nova coleção para o fluxo principal. Os novos campos são gravados nos documentos existentes.
+Variáveis esperadas no Vercel:
 
-Durante a validação, mantenha as regras atuais do piloto. **Não publique ainda** `firestore.production.rules` e `storage.production.rules` até validar os usuários nominais e permissões.
+```text
+NEXT_PUBLIC_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+NEXT_PUBLIC_FIREBASE_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID
+```
+
+Opcional:
+
+```text
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+```
+
+Durante a validação, mantenha as regras atuais do piloto.
+
+Não publique ainda:
+
+```text
+firestore.production.rules
+storage.production.rules
+```
+
+até validar usuários nominais, permissões e acessos.
 
 ## Publicação
 
-Leia `INSTRUCOES-ATUALIZACAO-v0.6.0.md`.
+Leia:
 
-## Verificação
+`INSTRUCOES-ATUALIZACAO-v0.5.1.md`
 
-Os arquivos TypeScript/TSX foram submetidos a verificação sintática local. O build completo com as dependências Next.js/Firebase será executado pelo Vercel durante o deploy.
+A orientação principal é: publicar somente a v0.5.1.
+
+## Compatibilidade
+
+Os registros históricos já importados continuam disponíveis.
+
+Registros antigos sem horário continuam usando datas diárias.
+
+Novas fichas passam a poder armazenar:
+
+- data de moldagem;
+- horário de moldagem;
+- valor da idade;
+- unidade (horas/dias);
+- data/hora programada do rompimento.
+
+## Segurança técnica
+
+Alertas automáticos, análises rápidas e sugestões de avaliação de descarte são ferramentas de apoio à gestão.
+
+Critérios de aceitação, tolerâncias de idade, descarte de reserva e aprovação técnica devem seguir os documentos aplicáveis à obra, procedimentos internos e decisão do responsável técnico.
+
+## Verificação do pacote
+
+Os arquivos TypeScript/TSX foram submetidos a verificação sintática/transpilação antes do empacotamento. O build final com as dependências do Next.js/Firebase será executado pelo Vercel.

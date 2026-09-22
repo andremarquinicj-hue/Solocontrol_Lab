@@ -278,5 +278,5 @@ export async function saveUserProfile(profile:UserProfile){if(firebaseConfigured
 
 export async function getBackupSnapshot(){
   const [samples,works,team,audit,nonConformities,equipment,checklists,users]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles()]);
-  return {generatedAt:new Date().toISOString(),version:'0.6.0',samples,works,team,audit,nonConformities,equipment,checklists,users};
+  return {generatedAt:new Date().toISOString(),version:'0.6.1',samples,works,team,audit,nonConformities,equipment,checklists,users};
 }

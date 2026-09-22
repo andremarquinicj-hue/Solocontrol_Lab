@@ -21,7 +21,7 @@ import {
 import { ageSpecToDays, makeId, parseAgeSpecToken } from '@/lib/utils';
 
 const blank={
-  id:'',number:'',name:'',client:'',location:'',plannedUnits:'',plannedVolumeM3:'',
+  id:'',number:'',name:'',client:'',contractor:'',location:'',plannedUnits:'',plannedVolumeM3:'',
   radier:'',paredes:'',lajes:'',oitaoes:'',muros:'',mapMode:'grid' as WorkMapMode,clientPortalEnabled:true,
   processMode:'generic' as 'villa_arauco'|'generic',
   defaultAges:'7d,14d,28d',defaultStrengthMpa:'',controlAgeDays:'28',reserveAgeDays:'63',
@@ -55,7 +55,7 @@ export default function WorksPage(){
     setMapFile(undefined);
     const villa=isVillaAraucoWork(work);
     setForm({
-      id:work.id,number:work.number||'',name:work.name||'',client:work.client||'',location:work.location||'',
+      id:work.id,number:work.number||'',name:work.name||'',client:work.client||'',contractor:work.contractor||'',location:work.location||'',
       plannedUnits:work.plannedUnits?String(work.plannedUnits):'',
       plannedVolumeM3:work.plannedVolumeM3?String(work.plannedVolumeM3):'',
       radier:work.plannedElements?.['RADIER']?String(work.plannedElements['RADIER']):'',
