@@ -51,7 +51,8 @@ function resultInfo(value: unknown, fallbackAgeDays: number, moldedAt: string): 
 
   if (typeof value === 'number' && value > 20000) {
     const dueDate = excelDate(value);
-    return { event: { id: makeId('rup'), ageDays: fallbackAgeDays, ageLabel: `${fallbackAgeDays} dias`, dueDate, status:'pendente', photos:[] } };
+    const fallbackHours = fallbackAgeDays < 1 ? fallbackAgeDays * 24 : undefined;
+    return { event: { id: makeId('rup'), ageDays: fallbackAgeDays, ageValue: fallbackHours || fallbackAgeDays, ageUnit: fallbackHours ? 'hours' : 'days', ageLabel: fallbackHours ? `${fallbackHours} horas` : `${fallbackAgeDays} dias`, dueDate, status:'pendente', photos:[] } };
   }
 
   const explicitDays = text.match(/(\d+(?:[.,]\d+)?)\s*DIAS?/i);
@@ -60,21 +61,26 @@ function resultInfo(value: unknown, fallbackAgeDays: number, moldedAt: string): 
   if (result === undefined) return {};
 
   let ageDays = fallbackAgeDays;
-  let ageLabel = fallbackAgeDays === 0.5 ? '12 horas' : `${fallbackAgeDays} dias`;
+  let ageValue = fallbackAgeDays < 1 ? fallbackAgeDays * 24 : fallbackAgeDays;
+  let ageUnit: 'hours' | 'days' = fallbackAgeDays < 1 ? 'hours' : 'days';
+  let ageLabel = ageUnit === 'hours' ? `${ageValue} horas` : `${ageValue} dias`;
   if (explicitDays) {
-    ageDays = Number(explicitDays[1].replace(',','.'));
-    ageLabel = `${ageDays} dias`;
+    ageValue = Number(explicitDays[1].replace(',','.'));
+    ageUnit = 'days';
+    ageDays = ageValue;
+    ageLabel = `${ageValue} dias`;
   } else if (explicitHours) {
-    const hours = Number(explicitHours[1].replace(',','.'));
-    ageDays = hours / 24;
-    ageLabel = `${hours} horas`;
+    ageValue = Number(explicitHours[1].replace(',','.'));
+    ageUnit = 'hours';
+    ageDays = ageValue / 24;
+    ageLabel = `${ageValue} horas`;
   }
 
   const d = new Date(`${moldedAt}T12:00:00`);
   d.setDate(d.getDate() + Math.round(ageDays));
   return {
     event: {
-      id: makeId('rup'), ageDays, ageLabel,
+      id: makeId('rup'), ageDays, ageValue, ageUnit, ageLabel,
       dueDate: d.toISOString().slice(0,10),
       status:'concluido', resistanceMpa: result,
       completedAt: d.toISOString(), photos:[], notes:'Resultado histórico importado do Excel.'

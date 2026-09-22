@@ -1,0 +1,22 @@
+'use client';
+
+import { CalendarClock, Save, Trash2, Wrench } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { deleteEquipment, listEquipment, saveEquipment } from '@/lib/store';
+import { Equipment } from '@/lib/types';
+import { formatDate, isoToday, makeId } from '@/lib/utils';
+
+const blank={id:'',name:'',type:'Prensa',assetNumber:'',serialNumber:'',calibrationCertificate:'',lastCalibration:'',nextCalibration:'',notes:''};
+
+export default function EquipmentPage(){
+  const [items,setItems]=useState<Equipment[]>([]);const [form,setForm]=useState(blank);const today=isoToday();
+  async function load(){setItems(await listEquipment())}useEffect(()=>{load()},[]);
+  const expiring=useMemo(()=>items.filter(x=>x.active&&x.nextCalibration&&x.nextCalibration<=new Date(Date.now()+30*86400000).toISOString().slice(0,10)),[items]);
+  async function save(){if(!form.name||!form.assetNumber)return;await saveEquipment({id:form.id||makeId('eq'),name:form.name,type:form.type,assetNumber:form.assetNumber,serialNumber:form.serialNumber||undefined,calibrationCertificate:form.calibrationCertificate||undefined,lastCalibration:form.lastCalibration||undefined,nextCalibration:form.nextCalibration||undefined,active:true,notes:form.notes||undefined});setForm(blank);await load()}
+  return <div className="page-stack">
+    <section className="page-heading"><div><span className="eyebrow">RASTREABILIDADE METROLÓGICA</span><h1>Equipamentos</h1><p>Controle patrimônio, certificados e vencimentos de calibração.</p></div></section>
+    <section className="stats-grid equipment-stats"><div className="panel mini-kpi"><Wrench/><div><span>Equipamentos ativos</span><strong>{items.filter(x=>x.active).length}</strong></div></div><div className="panel mini-kpi"><CalendarClock/><div><span>Calibração em até 30 dias</span><strong>{expiring.length}</strong></div></div></section>
+    <section className="two-columns"><div className="panel"><div className="panel-header"><div><h2>{form.id?'Editar equipamento':'Cadastrar equipamento'}</h2><p>Vincule o equipamento às rupturas para fechar a rastreabilidade.</p></div></div><div className="form-grid compact"><label>Nome *<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Prensa 0001"/></label><label>Tipo<input value={form.type} onChange={e=>setForm({...form,type:e.target.value})}/></label><label>Patrimônio *<input value={form.assetNumber} onChange={e=>setForm({...form,assetNumber:e.target.value})}/></label><label>Nº de série<input value={form.serialNumber} onChange={e=>setForm({...form,serialNumber:e.target.value})}/></label><label>Certificado<input value={form.calibrationCertificate} onChange={e=>setForm({...form,calibrationCertificate:e.target.value})}/></label><label>Última calibração<input type="date" value={form.lastCalibration} onChange={e=>setForm({...form,lastCalibration:e.target.value})}/></label><label>Próxima calibração<input type="date" value={form.nextCalibration} onChange={e=>setForm({...form,nextCalibration:e.target.value})}/></label><label>Observações<input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label></div><button className="button primary" disabled={!form.name||!form.assetNumber} onClick={save}><Save size={16}/>Salvar</button></div>
+    <div className="panel"><div className="panel-header"><div><h2>Equipamentos cadastrados</h2><p>Alertas consideram a data atual.</p></div><Wrench/></div><div className="cards-list">{items.map(item=>{const overdue=item.nextCalibration&&item.nextCalibration<today;return <div className="equipment-card" key={item.id}><div><b>{item.name}</b><span>{item.type} • Patrimônio {item.assetNumber}</span><small>Próxima calibração: {formatDate(item.nextCalibration)}</small></div><span className={`status ${overdue?'atrasado':item.nextCalibration?'concluido':'pendente'}`}>{overdue?'Calibração vencida':item.nextCalibration?'Programada':'Sem data'}</span><div className="table-actions"><button className="button secondary small" onClick={()=>setForm({...blank,...item,serialNumber:item.serialNumber||'',calibrationCertificate:item.calibrationCertificate||'',lastCalibration:item.lastCalibration||'',nextCalibration:item.nextCalibration||'',notes:item.notes||''})}>Editar</button><button className="button danger small" onClick={async()=>{if(confirm('Excluir equipamento?')){await deleteEquipment(item.id);await load()}}}><Trash2 size={14}/></button></div></div>})}</div></div></section>
+  </div>
+}

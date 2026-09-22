@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn(){ return request.auth != null; }
+    function userDoc(){ return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)); }
+    function internal(){ return signedIn() && userDoc().data.active == true && userDoc().data.role in ['admin','coordinator','technician','engineer']; }
+    match /{allPaths=**} {
+      allow read: if signedIn();
+      allow create, update: if internal() && request.resource.size < 12 * 1024 * 1024 && request.resource.contentType.matches('image/.*|application/pdf');
+      allow delete: if internal();
+    }
+  }
+}

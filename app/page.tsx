@@ -7,8 +7,10 @@ import { useWorkScope } from '@/components/WorkScope';
 import StatCard from '@/components/StatCard';
 import { listSamples, listTeam, saveSample } from '@/lib/store';
 import { Sample, TeamMember } from '@/lib/types';
-import { formatDate, isoToday } from '@/lib/utils';
+import { formatDate, isoToday, isRuptureOverdue, ruptureAgeLabel, ruptureScheduleLabel } from '@/lib/utils';
 import { completedTests, elementProgress, formatElementLabel, overallProgress, sampleVolume, uniqueReports, workSamples } from '@/lib/work-analytics';
+import { analyzeFormRelease, resolveSpecimens } from '@/lib/technical-analysis';
+import { checkSlump, resolveProcessProfile, sampleProcessType } from '@/lib/process-profiles';
 
 export default function DashboardPage() {
   const [samples, setSamples] = useState<Sample[]>([]);
@@ -29,7 +31,7 @@ export default function DashboardPage() {
 
   const scoped = useMemo(() => workSamples(samples, selectedWorkId), [samples, selectedWorkId]);
   const operationalSamples = useMemo(
-    () => scoped.filter(sample => sample.includeInOperations !== false && sample.source !== 'historical_excel'),
+    () => scoped.filter(sample => !sample.archived && sample.includeInOperations !== false && sample.source !== 'historical_excel'),
     [scoped],
   );
   const ruptures = useMemo(
@@ -37,8 +39,10 @@ export default function DashboardPage() {
     [operationalSamples],
   );
   const todayR = ruptures.filter(r => r.dueDate === today && r.status !== 'concluido');
-  const overdue = ruptures.filter(r => r.dueDate < today && r.status !== 'concluido');
-  const agenda = [...overdue, ...todayR, ...ruptures.filter(r=>r.dueDate > today && r.status!=='concluido')].slice(0, 12);
+  const overdue = ruptures.filter(r => isRuptureOverdue(r));
+  const future = ruptures.filter(r=>r.status!=='concluido' && !isRuptureOverdue(r) && r.dueDate!==today);
+  const dueKey=(r:any)=>r.dueAt||`${r.dueDate}T23:59`;
+  const agenda = [...overdue.sort((a,b)=>dueKey(a).localeCompare(dueKey(b))), ...todayR.filter(r=>!isRuptureOverdue(r)).sort((a,b)=>dueKey(a).localeCompare(dueKey(b))), ...future.sort((a,b)=>dueKey(a).localeCompare(dueKey(b)))].slice(0, 12);
 
   const totalVolume = scoped.reduce((a,s)=>a+sampleVolume(s),0);
   const totalTests = completedTests(scoped);
@@ -46,6 +50,25 @@ export default function DashboardPage() {
   const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle').sort((a,b)=>b.moldedAt.localeCompare(a.moldedAt)), [scoped]);
   const noControl = noControlSamples.length;
   const progress = selectedWorkId !== 'all' ? elementProgress(scoped, selectedWork) : [];
+  const eligibleReserveCount = useMemo(()=>scoped.reduce((sum,sample)=>{
+    const work=works.find(w=>w.id===sample.workId);
+    return sum+resolveSpecimens(sample,work).filter(cp=>cp.status==='elegivel_descarte').length;
+  },0),[scoped,works]);
+  const slumpAlerts = useMemo(()=>scoped.filter(sample=>{
+    const work=works.find(w=>w.id===sample.workId);
+    const profile=resolveProcessProfile(work,sampleProcessType(sample));
+    const result=checkSlump(profile,sample.slumpActualCm);
+    return result.status==='low'||result.status==='high';
+  }),[scoped,works]);
+  const formReleasePending = useMemo(()=>scoped.filter(sample=>{
+    const work=works.find(w=>w.id===sample.workId);
+    const analysis=analyzeFormRelease(sample,work);
+    return analysis.applicable && ['pending','not_configured','below'].includes(analysis.decision);
+  }),[scoped,works]);
+  const formReleaseReady = useMemo(()=>scoped.filter(sample=>{
+    const work=works.find(w=>w.id===sample.workId);
+    return analyzeFormRelease(sample,work).decision==='eligible';
+  }),[scoped,works]);
   const volumePercent = selectedWork?.plannedVolumeM3 ? Math.min(100,(totalVolume/selectedWork.plannedVolumeM3)*100) : undefined;
 
   async function assign(sampleId:string, ruptureId:string, responsible:string) {
@@ -103,6 +126,16 @@ export default function DashboardPage() {
           <div className="progress-card volume-progress"><div className="progress-card-head"><span>Volume de concreto</span><b>{totalVolume.toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</b></div><div className="progress-bar"><span style={{width:`${volumePercent ?? 0}%`}}/></div><small>{volumePercent!==undefined?`${volumePercent.toFixed(1)}% da meta de ${selectedWork?.plannedVolumeM3?.toLocaleString('pt-BR')} m³`:'Cadastre o volume previsto em Obras para calcular o avanço'}</small></div>
         </div>
       </section>
+
+      <section className="panel villa-operations-panel">
+        <div className="panel-header"><div><h2>Controle operacional do laboratório</h2><p>Alertas automáticos da obra selecionada para priorização do coordenador.</p></div><ClipboardCheck/></div>
+        <div className="operations-grid">
+          <div className={slumpAlerts.length?'attention':''}><span>Slump fora da faixa configurada</span><strong>{slumpAlerts.length}</strong><small>{slumpAlerts.length?'revisar fichas e observações':'nenhum alerta'}</small></div>
+          <div className={formReleasePending.length?'attention':''}><span>Liberação de forma em acompanhamento</span><strong>{formReleasePending.length}</strong><small>12h / 19h / 24h ou critério pendente</small></div>
+          <div className="good"><span>Referência de liberação atingida</span><strong>{formReleaseReady.length}</strong><small>confirmar procedimento antes da liberação</small></div>
+          <div className={eligibleReserveCount?'good':''}><span>CPs de 63d elegíveis para avaliação</span><strong>{eligibleReserveCount}</strong><small>potencial de liberar espaço no tanque</small></div>
+        </div>
+      </section>
     </>}
 
     <section className="two-columns dashboard-columns">
@@ -111,12 +144,13 @@ export default function DashboardPage() {
         <div className="table-wrap"><table><thead><tr><th>Etiqueta</th><th>Obra</th><th>Idade</th><th>Ruptura</th><th>Responsável</th><th>Status</th><th></th></tr></thead><tbody>
           {loading && <tr><td colSpan={7}>Carregando...</td></tr>}
           {!loading && agenda.length===0 && <tr><td colSpan={7}>Nenhuma ruptura pendente neste filtro.</td></tr>}
-          {!loading && agenda.map(r => { const late = r.dueDate < today; return <tr key={r.id}><td><b>{r.sample.labelBase}</b></td><td>{r.sample.workName}</td><td>{r.ageLabel || `${r.ageDays} dias`}</td><td>{formatDate(r.dueDate)}</td><td><select value={r.responsible || ''} onChange={e=>assign(r.sample.id,r.id,e.target.value)}><option value="">Não atribuído</option>{team.map(m=><option key={m.id}>{m.name}</option>)}</select></td><td><span className={`status ${late ? 'atrasado' : r.status}`}>{late ? 'Atrasado' : r.status.replace('_',' ')}</span></td><td><Link className="text-link" href={`/amostras/${r.sample.id}`}>Abrir</Link></td></tr>})}
+          {!loading && agenda.map(r => { const late = isRuptureOverdue(r); return <tr key={r.id}><td><b>{r.sample.labelBase}</b></td><td>{r.sample.workName}</td><td>{ruptureAgeLabel(r)}</td><td>{ruptureScheduleLabel(r)}</td><td><select value={r.responsible || ''} onChange={e=>assign(r.sample.id,r.id,e.target.value)}><option value="">Não atribuído</option>{team.map(m=><option key={m.id}>{m.name}</option>)}</select></td><td><span className={`status ${late ? 'atrasado' : r.status}`}>{late ? 'Atrasado' : r.status.replace('_',' ')}</span></td><td><Link className="text-link" href={`/amostras/${r.sample.id}`}>Abrir</Link></td></tr>})}
         </tbody></table></div>
       </div>
       <div className="side-stack">
         <div className="panel day-check"><div className="panel-header"><div><h2>Conferência física</h2><p>Compare o sistema com as fichas do armário.</p></div><ClipboardCheck/></div><div className="donut"><div><strong>{todayR.length}</strong><span>fichas de hoje</span></div></div><p className="callout">A conferência acompanha o filtro de obra selecionado no topo.</p><Link className="button secondary" href="/amostras">Conferir fichas</Link></div>
-        <div className="panel"><div className="panel-header"><h2>Ações rápidas</h2><BarChart3/></div><div className="quick-actions"><Link href="/lancamento">Lançar ficha</Link><Link href="/mapa">Mapa da obra</Link><Link href="/historico">Importar / exportar</Link></div></div>
+        {eligibleReserveCount>0&&<div className="panel reserve-dashboard-alert"><div className="panel-header"><div><h2>CPs de reserva</h2><p>Há espaço que pode ser liberado após avaliação.</p></div><PackageCheck/></div><strong>{eligibleReserveCount}</strong><span>CP(s) elegível(is) para avaliação de descarte</span><Link className="button secondary full" href="/tanque">Abrir Gestão do Tanque</Link></div>}
+        <div className="panel"><div className="panel-header"><h2>Ações rápidas</h2><BarChart3/></div><div className="quick-actions"><Link href="/lancamento">Lançar ficha</Link><Link href="/mapa">Mapa da obra</Link><Link href="/tanque">Gestão do tanque</Link><Link href="/historico">Importar / exportar</Link></div></div>
       </div>
     </section>
 

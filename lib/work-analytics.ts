@@ -3,8 +3,10 @@ import { extractLots, normalizeLot } from './villa-arauco';
 
 export const ELEMENT_GROUPS = [
   'RADIER',
-  'PAREDES E LAJES',
+  'PAREDES',
+  'LAJES',
   'OITÕES E PLATIBANDAS',
+  'PAREDES E LAJES',
   'MURO DE ARRIMO',
 ] as const;
 
@@ -12,7 +14,9 @@ export function normalizeElementGroup(value?: string): string {
   const v = String(value || '').trim().toUpperCase();
   if (!v) return 'OUTROS';
   if (v.includes('RADIER')) return 'RADIER';
-  if (v.includes('PAREDE') || v.includes('LAJE')) return 'PAREDES E LAJES';
+  if (v.includes('PAREDES E LAJES') || v.includes('PAREDE/LAJE')) return 'PAREDES E LAJES';
+  if (v.includes('PAREDE')) return 'PAREDES';
+  if (v.includes('LAJE')) return 'LAJES';
   if (v.includes('OIT') || v.includes('PLATIBANDA')) return 'OITÕES E PLATIBANDAS';
   if (v.includes('MURO')) return 'MURO DE ARRIMO';
   return v;
@@ -70,7 +74,7 @@ export function elementProgress(samples: Sample[], work?: Work): WorkProgressIte
   return all.map(element => {
     const completed = uniqueConcreteUnits(samples, element);
     const explicitTarget = work?.plannedElements?.[element];
-    const fallbackTarget = ['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS'].includes(element)
+    const fallbackTarget = ['RADIER','PAREDES','LAJES','PAREDES E LAJES','OITÕES E PLATIBANDAS'].includes(element)
       ? work?.plannedUnits
       : undefined;
     const target = explicitTarget && explicitTarget > 0 ? explicitTarget : fallbackTarget;
@@ -92,7 +96,9 @@ export function overallProgress(samples: Sample[], work?: Work): number | undefi
 }
 
 export function formatElementLabel(element: string): string {
-  if (element === 'PAREDES E LAJES') return 'Paredes / Lajes';
+  if (element === 'PAREDES') return 'Paredes';
+  if (element === 'LAJES') return 'Lajes';
+  if (element === 'PAREDES E LAJES') return 'Paredes / Lajes (histórico)';
   if (element === 'OITÕES E PLATIBANDAS') return 'Oitões / Platibandas';
   if (element === 'MURO DE ARRIMO') return 'Muros';
   if (element === 'RADIER') return 'Radier';

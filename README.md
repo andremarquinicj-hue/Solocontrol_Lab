@@ -1,142 +1,230 @@
-# Solocontrol Lab v0.3.0 — Gestão Multiobra
+# Solocontrol Lab v0.6.0 — Operação Villa Arauco
 
-Versão do Solocontrol Lab preparada para gerenciar várias obras no mesmo sistema, mantendo o histórico, agenda operacional, mapas e indicadores separados por obra.
+Versão consolidada para publicação. **Não é necessário subir v0.4.0, v0.5.0 ou v0.5.1 antes.**
 
-## Novidades principais
+A v0.6.0 foi estruturada a partir do fluxo operacional informado para a Villa Arauco/COPLAN e mantém o modo genérico para as demais obras que a Solocontrol cadastrar futuramente.
 
-### 1. Seletor global de obra
-No topo do sistema existe o campo **Obra em análise**:
+## Objetivo
 
-- Todas as obras
-- Villa Arauco
-- demais obras cadastradas
+O sistema foi organizado para trabalhar junto com a ficha física padrão da Solocontrol. No início, a ficha continua sendo preenchida e arquivada fisicamente para auditoria; o sistema funciona como controle operacional, rastreabilidade, agenda, análise gerencial, evidência fotográfica e portal de acompanhamento.
 
-O filtro é mantido durante a navegação e afeta Dashboard, Amostras/Ensaios, Mapa, Histórico e Relatórios.
+## Perfil operacional — Villa Arauco
 
-### 2. Dashboard por obra
-Ao selecionar uma obra específica, o dashboard mostra:
+### Radier
 
-- registros de concretagem;
-- volume acumulado de concreto;
-- ensaios/rupturas concluídos;
-- quantidade de laudos registrados;
-- registros sem controle;
-- pendências operacionais;
-- progresso de Radier;
-- progresso de Paredes/Lajes;
-- progresso de Oitões/Platibandas;
-- progresso de Muros, quando houver meta;
-- avanço do volume de concreto, quando houver volume previsto.
+- 6 CPs por amostragem;
+- 2 CPs aos 7 dias;
+- 2 CPs aos 28 dias;
+- 2 CPs aos 63 dias;
+- slump operacional informado: **8 ± 1 cm**.
 
-O progresso por elemento usa **unidades únicas por Quadra + Lote**, evitando contar duas vezes o mesmo lote quando houver mais de uma nota fiscal/caminhão.
+### Paredes
 
-### 3. Dashboard geral da Solocontrol
-Em **Todas as obras** são exibidos indicadores consolidados e uma tabela por obra com:
+- 8 CPs por amostragem;
+- 2 CPs inicialmente programados para 12 h;
+- se a condição ainda não permitir o ensaio/liberação, os mesmos CPs podem ser reprogramados para 19 h ou 24 h;
+- 2 CPs aos 7 dias;
+- 2 CPs aos 28 dias;
+- 2 CPs aos 63 dias;
+- slump operacional informado: **20 ± 2 cm**.
 
-- progresso;
-- registros;
+### Lajes
+
+- 8 CPs;
+- 2 CPs em baixa idade (12 h, com possibilidade de reprogramação para 19 h ou 24 h);
+- 2 CPs aos 7 dias;
+- 2 CPs aos 28 dias;
+- 2 CPs aos 63 dias;
+- slump operacional informado: **8 ± 1 cm**.
+
+### Oitão / Platibanda
+
+- 8 CPs;
+- 2 CPs em baixa idade (12 h, com possibilidade de reprogramação para 19 h ou 24 h);
+- 2 CPs aos 7 dias;
+- 2 CPs aos 28 dias;
+- 2 CPs aos 63 dias;
+- slump operacional informado: **20 ± 2 cm**.
+
+Esses valores são tratados pelo sistema como **perfil operacional configurável da obra**, não como regra normativa universal. Devem ser conferidos com projeto, especificações, procedimento da Solocontrol e requisitos do cliente.
+
+## Cadastro da obra
+
+Em `Obras`, a Villa Arauco pode guardar:
+
+- cliente;
+- construtora/executora (ex.: COPLAN);
+- metas por etapa;
+- MPa de projeto aos 28 dias;
+- MPa de baixa idade para liberação de formas por processo;
+- critério de avaliação do par (`manual`, `menor resultado` ou `média`);
+- idade principal de controle;
+- idade de reserva;
+- regra de triagem de CPs de 63 dias;
+- capacidade do tanque/câmara;
+- planta da obra;
+- liberação no Portal do Cliente.
+
+O modo padrão de avaliação é **manual**. O sistema não presume se o projeto exige o menor resultado ou a média do par.
+
+## Lançamento baseado na ficha física
+
+A tela `Lançamento rápido` virou uma transcrição orientada da ficha de moldagem.
+
+Ela registra, quando disponível:
+
+- obra;
+- referência da ficha física;
+- relatório;
+- fornecedor/concreteira;
+- NF;
+- caminhão/betoneira e placa;
+- volume;
+- brita;
+- slump medido;
+- MPa de projeto;
+- quadra/lote/local;
+- método de lançamento;
+- saída da usina;
+- chegada na obra;
+- horário do slump;
+- início de descarga;
+- data e horário de moldagem;
+- água adicionada;
+- laboratorista;
+- etiqueta;
+- fotos da ficha, coleta e etiqueta.
+
+Ao escolher `Radier`, `Paredes`, `Laje` ou `Oitão / Platibanda`, o plano de CPs é montado automaticamente. Existe uma opção de **amostragem excepcional** caso uma ficha real tenha um plano diferente.
+
+## Slump
+
+O sistema compara o valor lançado com a faixa configurada para o processo e sinaliza:
+
+- dentro da faixa;
+- abaixo;
+- acima;
+- sem critério configurado.
+
+O alerta é gerencial e não substitui decisão técnica de campo.
+
+## Ensaio de baixa idade e liberação de formas
+
+Para Paredes, Lajes e Oitão/Platibanda, o sistema cria o par de CPs de baixa idade.
+
+O ensaio começa programado para 12 h. Se for necessário aguardar, a própria ficha permite reprogramar os **mesmos CPs** para 19 h ou 24 h, registrando:
+
+- horário original;
+- novo horário;
+- motivo;
+- data da alteração.
+
+O sistema compara o resultado com o MPa de baixa idade configurado, mas **não libera a forma automaticamente**. A liberação continua sendo uma decisão responsável conforme projeto/procedimento.
+
+## Resultados em pares
+
+Cada CP do par recebe individualmente:
+
+- carga;
+- unidade;
+- diâmetro;
+- altura, quando registrada;
+- resistência calculada em MPa.
+
+O evento mantém os resultados individuais e uma consolidação para gráfico/relatório.
+
+## 28 dias e CP de 63 dias
+
+O sistema permite cadastrar o MPa exigido pelo projeto.
+
+Quando o resultado de controle de 28 dias atende ao critério configurado, os CPs de 63 dias passam para:
+
+`Elegível para avaliação de descarte`
+
+Eles **não são descartados automaticamente**. A Gestão do Tanque exige confirmação manual, usuário, motivo e foto do CP antes do descarte.
+
+## Gestão do Tanque
+
+A tela `/tanque` mostra:
+
+- CPs armazenados;
+- reservas de 63 dias;
+- CPs elegíveis;
+- capacidade;
+- ocupação;
+- posições livres;
+- localização física;
+- saídas previstas;
+- histórico de descartes.
+
+## Mapa e Dossiê Técnico do Lote
+
+No mapa interno, clicar em um lote abre um dossiê com:
+
+- resumo;
+- concretagens;
+- volume;
+- processo;
+- concreteira/NF;
+- slump;
+- MPa de projeto;
+- cargas e resultados individuais;
+- rompimentos;
+- análise gerencial;
+- **gráfico de evolução da resistência/cura do concreto**.
+
+Os dados históricos antigos `PAREDES E LAJES` permanecem identificados dessa forma porque a planilha antiga não permite separar com segurança o que foi Parede e o que foi Laje. Novos lançamentos passam a registrar as etapas separadamente.
+
+## Relatório Diário
+
+A rota `/relatorios/diario` consolida o dia com:
+
+- concretagens e locais de uso;
+- quadra/lote;
+- processo;
+- ficha física;
+- slump e situação;
 - volume;
 - ensaios;
-- ocorrências sem controle.
+- resultados individuais dos CPs;
+- controle de baixa idade;
+- fotos.
 
-### 4. Planejamento da obra
-Em **Obras** agora é possível cadastrar/editar:
+Pode ser impresso/salvo em PDF pelo navegador e compartilhado com o grupo.
 
-- cliente e local;
-- quantidade total de unidades prevista;
-- volume de concreto previsto;
-- meta de Radier;
-- meta de Paredes/Lajes;
-- meta de Oitões/Platibandas;
-- meta de Muros;
-- tipo de mapa.
+## Portal do Cliente
 
-A obra Villa Arauco recebe como referência inicial 620 unidades, conforme o material de projeto utilizado na implantação do sistema. As metas podem ser alteradas pelo coordenador.
+O Portal do Cliente foi estruturado como apresentação profissional da Solocontrol:
 
-### 5. Mapa individual por obra
-O **Mapa da Obra** não é mais global.
+- dashboard da obra;
+- volume controlado;
+- concretagens;
+- ensaios;
+- laudos/referências;
+- progresso por etapa;
+- mapa de quadras/lotes;
+- atualização em tempo real pelo Firebase;
+- relatório técnico de acompanhamento ao clicar no lote;
+- gráfico de evolução da resistência;
+- resultados e evidências liberadas;
+- impressão/PDF do relatório do lote.
 
-- Villa Arauco: utiliza a planta de referência e a grade Quadra/Lote.
-- Outras obras: podem usar uma grade Quadra/Lote construída a partir dos próprios registros.
-- Uma obra também pode ser configurada sem mapa.
+O cliente **não vê** informações internas de tanque, descarte, auditoria ou decisões operacionais.
 
-As cores continuam indicando:
+## Segurança técnica
 
-- verde: possui registro;
-- amarelo: parcial/sem controle;
-- cinza: sem registro para o elemento selecionado.
-
-### 6. Importação histórica por obra
-Antes de importar o Excel, é obrigatório selecionar a **obra de destino**.
-
-Assim, uma planilha nunca é misturada acidentalmente com outra obra.
-
-### 7. Exportação por obra
-A exportação Excel usa a obra selecionada no topo e gera as abas de controle de concretagem e Controle Iluminado somente daquela obra.
-
-### 8. Quadra e Lote no lançamento rápido
-As novas fichas agora possuem campos opcionais de **Quadra** e **Lote**, permitindo alimentar mapas e indicadores de avanço também com os registros futuros.
-
-### 9. Lotes múltiplos em muros
-O sistema interpreta formatos do histórico como:
-
-- `01 E 18`
-- `05 E 06`
-- `11 A 14`
-- `15/16/17/18/19`
-
-Isso melhora o preenchimento do mapa e a contagem de unidades atendidas pelo elemento.
-
-## Atualização no GitHub
-
-Extraia o ZIP e substitua o conteúdo do repositório pelos arquivos desta versão.
-
-Mantenha suas variáveis do Firebase no Vercel. Não envie `.env.local` ao GitHub.
+Os alertas e análises automáticas são ferramentas de apoio. Critérios de aceitação, tolerâncias, liberação de formas e descarte de reservas devem seguir projeto, especificações, procedimentos, contrato, normas aplicáveis e responsável técnico.
 
 ## Firebase
 
-Esta versão não exige nova coleção obrigatória. Os campos adicionais de planejamento são gravados na coleção existente `works`.
+A v0.6.0 não exige nova coleção para o fluxo principal. Os novos campos são gravados nos documentos existentes.
 
-As coleções principais continuam:
+Durante a validação, mantenha as regras atuais do piloto. **Não publique ainda** `firestore.production.rules` e `storage.production.rules` até validar os usuários nominais e permissões.
 
-- `works`
-- `samples`
-- `team`
+## Publicação
 
-As regras existentes de Firestore e Storage continuam compatíveis.
+Leia `INSTRUCOES-ATUALIZACAO-v0.6.0.md`.
 
-## Observação importante sobre progresso
+## Verificação
 
-O percentual depende das metas cadastradas em **Obras**. Sem meta, o sistema exibe a quantidade já executada, mas não inventa um percentual de avanço.
-
-
-## v0.3.1 — exclusão segura de obras
-
-- Adicionado botão **Excluir** em `Obras cadastradas`.
-- Se a obra não possuir registros, uma confirmação simples é exibida.
-- Se a obra possuir fichas/ensaios vinculados, o sistema informa a quantidade e exige uma segunda confirmação digitando `EXCLUIR`.
-- A exclusão em cascata remove:
-  - cadastro da obra;
-  - fichas e ensaios vinculados;
-  - resultados;
-  - registros históricos importados;
-  - imagens vinculadas no Firebase Storage, quando disponíveis.
-- Se a obra excluída estiver selecionada no filtro global, o sistema volta automaticamente para **Todas as obras**.
-
-
-## v0.3.2 — detalhamento de pendências no Dashboard
-
-- O cartão **Sem controle** do dashboard da obra agora é clicável.
-- Ao clicar, abre uma janela com todos os registros sem controle da obra selecionada.
-- A janela mostra:
-  - data;
-  - quadra;
-  - lote;
-  - elemento;
-  - concreteira;
-  - nota fiscal;
-  - volume;
-  - planilha/aba de origem.
-- Cada linha possui **Abrir** para acessar a rastreabilidade do registro.
-- A janela mostra também o volume total envolvido nas pendências.
-- O cartão só fica interativo quando houver registros sem controle.
+Os arquivos TypeScript/TSX foram submetidos a verificação sintática local. O build completo com as dependências Next.js/Firebase será executado pelo Vercel durante o deploy.

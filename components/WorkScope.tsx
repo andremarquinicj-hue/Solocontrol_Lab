@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { listSamples, listWorks } from '@/lib/store';
 import { Sample, Work } from '@/lib/types';
+import { VILLA_ARAUCO_DEFAULT_PROFILES } from '@/lib/process-profiles';
 
 const STORAGE_KEY = 'solocontrol.selectedWorkId';
 
@@ -13,18 +14,28 @@ function virtualWorkFromSample(sample: Sample): Work {
     number: isVilla ? 'VA' : '—',
     name: sample.workName,
     client: isVilla ? 'Arauco' : 'Cliente',
+    contractor: isVilla ? 'COPLAN' : undefined,
     location: isVilla ? 'Inocência/MS' : undefined,
-    defaultAges: [7, 14, 28],
+    defaultAges: isVilla ? [7, 28, 63] : [7, 14, 28],
+    defaultRuptureAges: isVilla ? [{value:7,unit:'days'},{value:28,unit:'days'},{value:63,unit:'days'}] : [{value:7,unit:'days'},{value:14,unit:'days'},{value:28,unit:'days'}],
+    processMode: isVilla ? 'villa_arauco' : 'generic',
+    processProfiles: isVilla ? VILLA_ARAUCO_DEFAULT_PROFILES : undefined,
     active: true,
     plannedUnits: isVilla ? 620 : undefined,
     plannedElements: isVilla ? {
       'RADIER': 620,
-      'PAREDES E LAJES': 620,
+      'PAREDES': 620,
+      'LAJES': 620,
       'OITÕES E PLATIBANDAS': 620,
     } : undefined,
     mapMode: isVilla ? 'villa_arauco' : 'grid',
     mapImage: isVilla ? '/villa-arauco-planta.png' : undefined,
     mapMaxLot: isVilla ? 28 : undefined,
+    controlAgeDays: 28,
+    reserveAgeDays: 63,
+    reserveReleaseThresholdPct: 100,
+    reserveReleaseEnabled: true,
+    tankName: 'Tanque 01',
   };
 }
 
