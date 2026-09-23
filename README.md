@@ -1,4 +1,6 @@
-# Solocontrol Lab v0.7.0 — Operação diária + base atualizada de rupturas
+> **v0.7.1:** correção de compatibilidade TypeScript/Vercel para iteração de `Map` com target ES5. Nenhuma funcionalidade da v0.7.0 foi removida.
+
+# Solocontrol Lab v0.7.1 — Operação diária + base atualizada de rupturas
 
 Versão consolidada recomendada para publicação.
 

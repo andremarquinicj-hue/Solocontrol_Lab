@@ -364,7 +364,7 @@ export function reconcileRuptureRecords(
 
   const sampleById=new Map(scoped.map(sample=>[sample.id,sample]));
   const updatedSamples:Array<Sample>=[];
-  for(const [sampleId,matched] of matchedGroups){
+  for(const [sampleId,matched] of Array.from(matchedGroups.entries())){
     const sample=sampleById.get(sampleId);
     if(sample)updatedSamples.push(applyRecordsToSample(sample,matched));
   }
