@@ -3,8 +3,26 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  BarChart3, Building2, CheckCircle2, FileCheck2, FileDown, FlaskConical,
-  LockKeyhole, MapPinned, PackageCheck, Share2, ShieldCheck, X
+  BarChart3,
+  Building2,
+  Camera,
+  CheckCircle2,
+  ChevronRight,
+  FileCheck2,
+  FileDown,
+  FileText,
+  FlaskConical,
+  FolderOpen,
+  HelpCircle,
+  Home,
+  ImageIcon,
+  LockKeyhole,
+  MapPinned,
+  PackageCheck,
+  Share2,
+  ShieldCheck,
+  TrendingUp,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
@@ -15,15 +33,32 @@ import { db, ensureFirebaseUser, firebaseConfigured } from '@/lib/firebase';
 import { Sample, Work } from '@/lib/types';
 import { lotTechnicalSummary } from '@/lib/technical-analysis';
 import { downloadLotTechnicalPdf, shareLotTechnicalPdf } from '@/lib/lot-report-pdf';
-import { processTypeLabel, sampleProcessLabel, sampleProcessType } from '@/lib/process-profiles';
+import { sampleProcessLabel } from '@/lib/process-profiles';
 import {
-  completedTests, elementProgress, formatElementLabel, normalizeElementGroup, overallProgress,
-  sampleCollectionDate, sampleVolume, uniqueReports
+  completedTests,
+  elementProgress,
+  formatElementLabel,
+  normalizeElementGroup,
+  overallProgress,
+  sampleCollectionDate,
+  sampleVolume,
+  uniqueConcreteUnits,
+  uniqueReports,
 } from '@/lib/work-analytics';
 import { extractLots, normalizeBlock, VILLA_ARAUCO_BLOCKS } from '@/lib/villa-arauco';
 import { formatDate, ruptureAgeLabel } from '@/lib/utils';
 
 type LotRef={block:string;lot:string};
+
+function formatNumber(value:number,digits=1){
+  return value.toLocaleString('pt-BR',{maximumFractionDigits:digits});
+}
+
+function monthLabel(value:string){
+  const date=new Date(`${value}T12:00:00`);
+  if(Number.isNaN(date.getTime()))return value;
+  return date.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+}
 
 export default function ClientPortal(){
   const {profile,isPilot}=useAuthScope();
@@ -80,6 +115,64 @@ export default function ClientPortal(){
   const controlled=data.filter(s=>s.historicalState!=='sem_controle').length;
   const pending=data.filter(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial').length;
   const latest=data.map(s=>s.updatedAt).filter(Boolean).sort().at(-1);
+  const controlledUnits=uniqueConcreteUnits(data);
+  const traceabilityPercent=data.length?Math.min(100,(controlled/data.length)*100):100;
+  const plannedUnits=work?.plannedUnits||0;
+  const unitPercent=plannedUnits?Math.min(100,(controlledUnits/plannedUnits)*100):(overall||0);
+
+  const productionSeries=useMemo(()=>{
+    const groups=new Map<string,{volume:number,units:Set<string>}>();
+    data.forEach(sample=>{
+      const key=sampleCollectionDate(sample).slice(0,7);
+      const current=groups.get(key)||{volume:0,units:new Set<string>()};
+      current.volume+=sampleVolume(sample);
+      const block=normalizeBlock(sample.block);
+      const lots=extractLots(sample.lot);
+      lots.forEach(lot=>current.units.add(`${block}-${lot}`));
+      groups.set(key,current);
+    });
+    return Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0])).slice(-9).map(([key,value])=>({key,label:monthLabel(`${key}-01`),volume:value.volume,units:value.units.size}));
+  },[data]);
+  const productionMax=Math.max(...productionSeries.map(item=>item.units),1);
+
+  const volumeDistribution=useMemo(()=>{
+    const groups=new Map<string,number>();
+    data.forEach(sample=>{
+      const key=normalizeElementGroup(sample.element);
+      if(key==='OUTROS')return;
+      groups.set(key,(groups.get(key)||0)+sampleVolume(sample));
+    });
+    const colors=['#0b4f97','#0b77d5','#49a7eb','#8ac7f4'];
+    return Array.from(groups.entries()).map(([element,value],index)=>({
+      element,
+      label:formatElementLabel(element),
+      value,
+      percent:volume?(value/volume)*100:0,
+      color:colors[index%colors.length],
+    })).sort((a,b)=>b.value-a.value);
+  },[data,volume]);
+  const volumeDonut=useMemo(()=>{
+    if(!volumeDistribution.length)return 'conic-gradient(#e5edf4 0 100%)';
+    let cursor=0;
+    const stops=volumeDistribution.map(item=>{
+      const start=cursor;
+      cursor+=item.percent;
+      return `${item.color} ${start}% ${Math.min(100,cursor)}%`;
+    });
+    if(cursor<100)stops.push(`#e5edf4 ${cursor}% 100%`);
+    return `conic-gradient(${stops.join(',')})`;
+  },[volumeDistribution]);
+
+  const evidence=useMemo(()=>{
+    const all=data.flatMap(sample=>[
+      ...sample.photos.map(photo=>({url:photo.url,label:photo.name,sample})),
+      ...sample.ruptures.flatMap(rupture=>rupture.photos.map(photo=>({url:photo.url,label:`${ruptureAgeLabel(rupture)} • ${photo.name}`,sample}))),
+    ]).filter(item=>Boolean(item.url));
+    const seen=new Set<string>();
+    return all.filter(item=>!seen.has(item.url)&&seen.add(item.url)).slice(0,5);
+  },[data]);
+
+  const recent=useMemo(()=>[...data].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).slice(0,6),[data]);
 
   const blocks=useMemo(
     ()=>work?.mapMode==='villa_arauco'
@@ -134,55 +227,129 @@ export default function ClientPortal(){
     finally{setReportBusy('')}
   }
 
-  if(isPilot)return <main className="client-portal">
-    <header className="client-header"><div><Image src="/logo-solocontrol.png" width={200} height={100} alt="Solocontrol"/><div><b>Portal de Acompanhamento da Obra</b><span>Acesso protegido aos dados do cliente.</span></div></div></header>
-    <section className="client-empty"><LockKeyhole size={46}/><h1>Login necessário</h1><p>Dados reais da obra não são exibidos no modo anônimo. Entre com uma conta de cliente autorizada.</p><Link href="/login" className="button primary">Entrar no portal</Link></section>
+  if(isPilot)return <main className="client-portal client-portal-v2">
+    <section className="client-empty"><Image src="/logo-solocontrol.png" width={220} height={110} alt="Solocontrol"/><LockKeyhole size={44}/><h1>Login necessário</h1><p>Dados reais da obra não são exibidos no modo anônimo. Entre com uma conta de cliente autorizada.</p><Link href="/login" className="button primary">Entrar no portal</Link></section>
   </main>;
 
-  return <main className="client-portal">
-    <header className="client-header">
-      <div><Image src="/logo-solocontrol.png" width={200} height={100} alt="Solocontrol"/><div><b>Portal de Acompanhamento da Obra</b><span>Controle tecnológico, rastreabilidade e progresso em tempo real.</span></div></div>
-      <div className="client-header-actions"><label>Obra<select value={workId} onChange={e=>{setWorkId(e.target.value);setSelectedLot(null)}}>{works.map(w=><option value={w.id} key={w.id}>{w.name}</option>)}</select></label><Link href="/login" className="button ghost"><LockKeyhole size={15}/>Conta</Link></div>
-    </header>
+  return <main className="client-portal-v2">
+    <aside className="client-sidebar-v2">
+      <div className="client-brand-v2">
+        <Image src="/logo-solocontrol.png" width={185} height={92} alt="Solocontrol" priority/>
+        <span>Portal do Cliente</span>
+      </div>
+      <nav>
+        <a href="#visao-geral"><Home size={18}/>Visão Geral</a>
+        <a href="#mapa"><MapPinned size={18}/>Mapa da Obra</a>
+        <a href="#concretagens"><FlaskConical size={18}/>Concretagens</a>
+        <a href="#resultados"><BarChart3 size={18}/>Resultados</a>
+        <a href="#relatorios"><FileText size={18}/>Relatórios</a>
+        <a href="#fotos"><ImageIcon size={18}/>Galeria de Fotos</a>
+        <a href="#documentos"><FolderOpen size={18}/>Documentos</a>
+        <a href="#sobre"><HelpCircle size={18}/>Sobre a Solocontrol</a>
+      </nav>
+      <div className="client-sidebar-quote"><ShieldCheck size={28}/><b>Qualidade hoje.<br/>Construindo o amanhã.</b></div>
+      <div className="client-sidebar-account"><span>Acesso</span><b>{profile.name}</b><Link href="/login">Minha conta</Link></div>
+    </aside>
 
-    {!work?<section className="client-empty"><Building2 size={44}/><h1>Nenhuma obra liberada</h1><p>Solicite à Solocontrol a liberação do acesso para a obra.</p></section>:<>
-      <section className="client-hero professional">
-        <div><span className="eyebrow">SOLOCONTROL • MONITORAMENTO AO VIVO</span><h1>{work.name}</h1><p>{work.client}{work.contractor?` • Executora: ${work.contractor}`:''}{work.location?` • ${work.location}`:''}</p><div className="client-trust-line"><ShieldCheck/><span>Dados rastreáveis por ficha, lote, ensaio e evidência fotográfica.</span></div></div>
-        <div className="client-progress-ring"><strong>{overall!==undefined?`${overall.toFixed(0)}%`:'—'}</strong><span>avanço controlado</span></div>
-      </section>
+    <div className="client-main-v2">
+      {!work?<section className="client-empty"><Building2 size={44}/><h1>Nenhuma obra liberada</h1><p>Solicite à Solocontrol a liberação do acesso para a obra.</p></section>:<>
+        <section id="visao-geral" className="client-hero-v2">
+          <div className="client-hero-v2-copy">
+            <span>PORTAL DE ACOMPANHAMENTO TECNOLÓGICO</span>
+            <div className="client-hero-title-row"><h1>{work.name}</h1><b>Obra em andamento</b></div>
+            <p><strong>Cliente:</strong> {work.client} <i/> <strong>Executora:</strong> {work.contractor||'—'}</p>
+            <small>Controle tecnológico: Solocontrol Engenharia e Consultoria</small>
+            <blockquote>“Qualidade, segurança e rastreabilidade em todas as etapas da sua obra.”</blockquote>
+          </div>
+          <div className="client-hero-v2-side">
+            <label>Obra<select value={workId} onChange={e=>{setWorkId(e.target.value);setSelectedLot(null)}}>{works.map(w=><option value={w.id} key={w.id}>{w.name}</option>)}</select></label>
+            <div className="client-last-update"><span>Última atualização</span><b>{latest?new Date(latest).toLocaleDateString('pt-BR'):'—'}</b><strong>{latest?new Date(latest).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</strong></div>
+            <p>Mais que números,<br/><b>construímos confiança.</b></p>
+          </div>
+        </section>
 
-      <section className="client-kpis professional">
-        <div><PackageCheck/><span>Volume controlado</span><strong>{volume.toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</strong><small>acumulado da obra</small></div>
-        <div><FlaskConical/><span>Ensaios realizados</span><strong>{tests}</strong><small>resultados registrados</small></div>
-        <div><BarChart3/><span>Concretagens registradas</span><strong>{data.length}</strong><small>rastreabilidade por lote</small></div>
-        <div><FileCheck2/><span>Laudos registrados</span><strong>{reports}</strong><small>referências únicas</small></div>
-        <div><CheckCircle2/><span>Registros controlados</span><strong>{controlled}</strong><small>{pending} em acompanhamento</small></div>
-      </section>
+        <section className="client-kpi-grid-v2">
+          <div><Home/><span>Unidades previstas</span><strong>{plannedUnits||'—'}</strong><small>Total da obra</small></div>
+          <div><CheckCircle2/><span>Unidades com controle</span><strong>{controlledUnits}</strong><small>{unitPercent.toFixed(1)}% do total</small></div>
+          <div><PackageCheck/><span>Volume de concreto</span><strong>{formatNumber(volume)} m³</strong><small>controlado</small></div>
+          <div><FlaskConical/><span>Ensaios realizados</span><strong>{tests.toLocaleString('pt-BR')}</strong><small>resultados registrados</small></div>
+          <div><FileCheck2/><span>Laudos registrados</span><strong>{reports}</strong><small>referências únicas</small></div>
+          <div><ShieldCheck/><span>Rastreabilidade</span><strong>{traceabilityPercent.toFixed(0)}%</strong><small>dos registros</small></div>
+        </section>
 
-      <section className="client-section client-quality-strip">
-        <div><span>ATUALIZAÇÃO</span><b>{latest?new Date(latest).toLocaleString('pt-BR'):'—'}</b></div>
-        <div><span>PORTAL</span><b>Tempo real</b></div>
-        <div><span>RASTREABILIDADE</span><b>Quadra • Lote • Ficha • CP</b></div>
-        <div><span>EVIDÊNCIAS</span><b>Fotos vinculadas aos registros</b></div>
-      </section>
+        <section className="client-dashboard-v2">
+          <article className="client-card-v2 client-evolution-v2" id="resultados">
+            <div className="client-card-title-v2"><div><span>EVOLUÇÃO DA OBRA</span><h2>Unidades com processo controlado</h2></div><div className="client-chart-legend"><i className="planned"/>Previsto <i className="realized"/>Realizado</div></div>
+            <div className="client-bars-v2">
+              {productionSeries.map(item=><div key={item.key}><div className="client-bar-track-v2"><span style={{height:`${(item.units/productionMax)*100}%`}}/></div><b>{item.label}</b><small>{item.units} un.</small></div>)}
+              {!productionSeries.length&&<div className="client-empty-mini">Sem produção mensal suficiente.</div>}
+            </div>
+          </article>
 
-      <section className="client-section">
-        <div className="client-section-title"><div><span>EVOLUÇÃO DA OBRA</span><h2>Progresso por etapa construtiva</h2></div><p>Indicadores calculados a partir dos registros de controle tecnológico da Solocontrol.</p></div>
-        <div className="client-progress-grid">{progress.map(p=><div key={p.element}><div><span>{formatElementLabel(p.element)}</span><b>{p.completed}{p.target?` / ${p.target}`:''}</b></div><div className="progress-bar"><span style={{width:`${p.percent??0}%`}}/></div><small>{p.percent!==undefined?`${p.percent.toFixed(1)}% concluído`:'Meta não cadastrada'}</small></div>)}</div>
-      </section>
+          <article className="client-card-v2 client-distribution-v2">
+            <div className="client-card-title-v2"><div><span>DISTRIBUIÇÃO DO VOLUME</span><h2>Por elemento construtivo</h2></div></div>
+            <div className="client-distribution-layout-v2">
+              <div className="client-donut-v2" style={{background:volumeDonut}}><div><b>{formatNumber(volume)}</b><span>m³ total</span></div></div>
+              <div className="client-volume-legend-v2">{volumeDistribution.map(item=><div key={item.element}><span><i style={{background:item.color}}/>{item.label}</span><b>{formatNumber(item.value)} m³ ({item.percent.toFixed(1)}%)</b></div>)}</div>
+            </div>
+          </article>
 
-      <section className="client-section">
-        <div className="client-section-title"><div><span>MAPA INTERATIVO</span><h2>Quadras e lotes</h2></div><div className="element-tabs">{['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS','MURO DE ARRIMO'].map(e=><button key={e} className={element===e?'active':''} onClick={()=>setElement(e)}>{formatElementLabel(e)}</button>)}</div></div>
-        {work.mapImage&&<div className="client-plan"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
-        <div className="client-map-legend"><span><i className="map-dot done"/> Com registro</span><span><i className="map-dot partial"/> Em acompanhamento</span><span><i className="map-dot empty"/> Sem registro</span><b>Clique no lote para abrir o relatório técnico.</b></div>
-        <div className="blocks-grid client-blocks">{blocks.slice(0,30).map(block=><div className="block-card" key={block}><div className="block-title"><MapPinned size={14}/>Quadra {block}</div><div className="lots-grid">{Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const rs=records(block,lot);const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');return <button type="button" onClick={()=>setSelectedLot({block,lot})} className={`lot-tile ${rs.length?(bad?'partial':'done'):'empty'}`} key={lot}>{lot}</button>})}</div></div>)}</div>
-      </section>
+          <article className="client-card-v2 client-quality-v2">
+            <div className="client-card-title-v2"><div><span>QUALIDADE E CONFORMIDADE</span><h2>Indicadores de confiança</h2></div></div>
+            <div className="client-quality-list-v2">
+              <div><CheckCircle2/><span>Registros com rastreabilidade</span><b>{traceabilityPercent.toFixed(0)}%</b></div>
+              <div><CheckCircle2/><span>Ensaios registrados</span><b>{tests.toLocaleString('pt-BR')}</b></div>
+              <div className={pending?'attention':''}><ShieldCheck/><span>Pendências críticas</span><b>{pending}</b></div>
+              <div><FileCheck2/><span>Laudos/referências</span><b>{reports}</b></div>
+              <div><TrendingUp/><span>Acompanhamento técnico</span><b>Ativo</b></div>
+            </div>
+            <div className="client-quality-verdict-v2"><CheckCircle2/><div><b>Obra dentro do acompanhamento tecnológico</b><span>Os dados exibidos são derivados dos registros cadastrados no sistema.</span></div></div>
+          </article>
+        </section>
 
-      <section className="client-section">
-        <div className="client-section-title"><div><span>ATIVIDADE RECENTE</span><h2>Últimos controles registrados</h2></div></div>
-        <div className="table-wrap"><table><thead><tr><th>Data</th><th>Quadra/Lote</th><th>Processo</th><th>Volume</th><th>Slump</th><th>Laudo/Ficha</th><th>Status</th></tr></thead><tbody>{[...data].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).slice(0,20).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{s.block?`Q${s.block}`:'—'} {s.lot?`L${s.lot}`:''}</td><td>{sampleProcessLabel(s)}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td><td>{s.historicalBaselineClosed?<span className="legacy-closed-note">Histórico</span>:<span className={`status ${s.historicalState==='sem_controle'?'pendente':'concluido'}`}>{s.historicalState==='sem_controle'?'Em acompanhamento':'Registrado'}</span>}</td></tr>)}</tbody></table></div>
-      </section>
-    </>}
+        <section id="mapa" className="client-map-layout-v2">
+          <article className="client-card-v2 client-map-card-v2">
+            <div className="client-card-title-v2"><div><span>MAPA DA OBRA</span><h2>Quadras e lotes</h2></div><div className="client-map-filter-v2">{['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS','MURO DE ARRIMO'].map(e=><button key={e} className={element===e?'active':''} onClick={()=>setElement(e)}>{formatElementLabel(e)}</button>)}</div></div>
+            <div className="client-map-legend-v2"><span><i className="done"/>Concluído</span><span><i className="active"/>Em andamento</span><span><i className="waiting"/>Aguardando ensaio</span><span><i className="none"/>Sem registro</span></div>
+            {work.mapImage&&<div className="client-plan-v2"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
+            <div className="blocks-grid client-blocks client-blocks-v2">{blocks.slice(0,30).map(block=><div className="block-card" key={block}><div className="block-title"><MapPinned size={14}/>Quadra {block}</div><div className="lots-grid">{Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const rs=records(block,lot);const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');return <button type="button" onClick={()=>setSelectedLot({block,lot})} className={`lot-tile ${rs.length?(bad?'partial':'done'):'empty'}`} key={lot}>{lot}</button>})}</div></div>)}</div>
+          </article>
+
+          <article id="concretagens" className="client-card-v2 client-recent-v2">
+            <div className="client-card-title-v2"><div><span>ÚLTIMAS CONCRETAGENS</span><h2>Atividade recente</h2></div><a href="#mapa">Ver mapa →</a></div>
+            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Quadra</th><th>Lote</th><th>Elemento</th><th>Volume</th><th>Status</th></tr></thead><tbody>{recent.map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{s.block?`Q${s.block}`:'—'}</td><td>{s.lot?`L${s.lot}`:'—'}</td><td>{sampleProcessLabel(s)}</td><td>{formatNumber(sampleVolume(s))} m³</td><td><span className="status concluido">Registrado</span></td></tr>)}</tbody></table></div>
+            <div className="client-map-callout-v2"><FileText/><div><b>Acesse o dossiê completo de cada lote</b><span>Relatórios, resultados, fotos e muito mais.</span></div><a href="#mapa" className="button primary">Explorar mapa</a></div>
+          </article>
+        </section>
+
+        <section className="client-field-grid-v2">
+          <article id="fotos" className="client-card-v2 client-gallery-v2">
+            <div className="client-card-title-v2"><div><span>REGISTRO EM CAMPO</span><h2>Evidências da qualidade</h2></div></div>
+            <div className="client-gallery-grid-v2">
+              {evidence.map((item,index)=><figure key={`${item.url}-${index}`}><img src={item.url} alt={item.label}/><figcaption><b>{item.label}</b><span>{item.sample.block?`Q${item.sample.block}`:''}{item.sample.lot?` • L${item.sample.lot}`:''} • {formatDate(sampleCollectionDate(item.sample))}</span></figcaption></figure>)}
+              {!evidence.length&&<div className="client-gallery-placeholder-v2"><Camera size={28}/><b>Galeria em formação</b><span>As fotos vinculadas às novas fichas aparecerão automaticamente aqui.</span></div>}
+            </div>
+          </article>
+
+          <article id="relatorios" className="client-card-v2 client-docs-v2">
+            <div className="client-card-title-v2"><div><span>DOCUMENTOS E RELATÓRIOS</span><h2>Geração de relatórios técnicos</h2></div></div>
+            <div className="client-doc-list-v2">
+              <button onClick={()=>window.print()}><FileText/><span>Visão geral da obra</span><b>PDF</b></button>
+              <a href="#mapa"><FileText/><span>Relatório por quadra/lote</span><b>Mapa</b></a>
+              <a href="#concretagens"><FileText/><span>Histórico de concretagens</span><b>Dados</b></a>
+              <a href="#resultados"><FileText/><span>Resultados e evolução</span><b>Gráficos</b></a>
+            </div>
+            <a href="mailto:contatos.solocontrol@gmail.com" className="button primary full">Solicitar relatório personalizado</a>
+          </article>
+        </section>
+
+        <section id="documentos" className="client-document-strip-v2">
+          <ShieldCheck/><div><b>Transparência e rastreabilidade em tempo real</b><span>O portal apresenta informações de acompanhamento. Resultados formais permanecem vinculados aos relatórios técnicos aprovados e documentos aplicáveis.</span></div>
+        </section>
+
+        <footer id="sobre" className="client-footer-v2"><Image src="/logo-solocontrol-icon.png" width={40} height={40} alt="Solocontrol"/><div><b>Solocontrol Engenharia e Consultoria</b><span>Controle tecnológico para um futuro mais seguro.</span></div><small>Tecnologia aplicada à qualidade, controle e rastreabilidade.</small></footer>
+      </>}
+    </div>
 
     {selectedLot&&lotSummary&&work&&<div className="modal-backdrop client-tech-report-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)setSelectedLot(null)}}>
       <section className="modal-card client-tech-report">
@@ -198,7 +365,7 @@ export default function ClientPortal(){
 
         <div className="lot-dossier-kpis client">
           <div><span>Concretagens</span><strong>{selectedLotRecords.length}</strong></div>
-          <div><span>Volume controlado</span><strong>{selectedLotRecords.reduce((sum,s)=>sum+sampleVolume(s),0).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</strong></div>
+          <div><span>Volume controlado</span><strong>{formatNumber(selectedLotRecords.reduce((sum,s)=>sum+sampleVolume(s),0))} m³</strong></div>
           <div><span>Ensaios concluídos</span><strong>{selectedLotRecords.reduce((sum,s)=>sum+s.ruptures.filter(r=>r.status==='concluido').length,0)}</strong></div>
           <div><span>Laudos / referências</span><strong>{new Set(selectedLotRecords.map(s=>s.reportNumber||s.physicalFormNumber).filter(Boolean)).size}</strong></div>
         </div>
@@ -206,7 +373,7 @@ export default function ClientPortal(){
         <div className="client-report-body">
           <section>
             <div className="client-report-section-title"><span>01</span><div><b>Resumo das concretagens</b><small>Rastreabilidade por etapa construtiva</small></div></div>
-            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Referência</th></tr></thead><tbody>{[...selectedLotRecords].sort((a,b)=>sampleCollectionDate(a).localeCompare(sampleCollectionDate(b))).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{sampleVolume(s).toLocaleString('pt-BR',{maximumFractionDigits:1})} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:work.defaultStrengthMpa?`${work.defaultStrengthMpa} MPa`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td></tr>)}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Processo</th><th>Concreteira</th><th>NF</th><th>Volume</th><th>Slump</th><th>MPa projeto</th><th>Referência</th></tr></thead><tbody>{[...selectedLotRecords].sort((a,b)=>sampleCollectionDate(a).localeCompare(sampleCollectionDate(b))).map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{sampleProcessLabel(s)}</td><td>{s.supplier||'—'}</td><td>{s.invoice||'—'}</td><td>{formatNumber(sampleVolume(s))} m³</td><td>{s.slumpActualCm!==undefined?`${s.slumpActualCm} cm`:'—'}</td><td>{s.specifiedStrengthMpa?`${s.specifiedStrengthMpa} MPa`:work.defaultStrengthMpa?`${work.defaultStrengthMpa} MPa`:'—'}</td><td>{s.reportNumber||s.physicalFormNumber||'—'}</td></tr>)}</tbody></table></div>
           </section>
 
           <section>
@@ -228,7 +395,5 @@ export default function ClientPortal(){
         <div className="modal-footer"><span>Portal de acompanhamento Solocontrol. Resultados formais devem ser interpretados conforme projeto, especificações, procedimentos e relatórios técnicos aplicáveis.</span><div className="heading-actions"><button className="button ghost" disabled={Boolean(reportBusy)} onClick={clientPdf}><FileDown size={15}/>{reportBusy==='pdf'?'Gerando...':'Gerar PDF'}</button><button className="button primary" disabled={Boolean(reportBusy)} onClick={clientShare}><Share2 size={15}/>{reportBusy==='share'?'Preparando...':'Compartilhar'}</button><button className="button secondary" onClick={()=>setSelectedLot(null)}>Fechar relatório</button></div></div>
       </section>
     </div>}
-
-    <footer className="client-footer"><Image src="/logo-solocontrol-icon.png" width={42} height={42} alt="Solocontrol"/><div><b>Solocontrol Engenharia e Consultoria</b><span>Tecnologia aplicada à qualidade, controle e rastreabilidade.</span></div></footer>
-  </main>
+  </main>;
 }
