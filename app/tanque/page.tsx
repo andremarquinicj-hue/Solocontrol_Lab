@@ -25,7 +25,7 @@ export default function TankPage(){
   async function reload(){setSamples(await listSamples())}
   useEffect(()=>{reload()},[]);
 
-  const scoped=useMemo(()=>selectedWorkId==='all'?samples:samples.filter(s=>s.workId===selectedWorkId),[samples,selectedWorkId]);
+  const scoped=useMemo(()=>{const base=selectedWorkId==='all'?samples:samples.filter(s=>s.workId===selectedWorkId);return base.filter(s=>!s.archived&&s.includeInOperations!==false&&s.source!=='historical_excel')},[samples,selectedWorkId]);
 
   const inventory=useMemo<InventoryRow[]>(()=>{
     const rows:InventoryRow[]=[];

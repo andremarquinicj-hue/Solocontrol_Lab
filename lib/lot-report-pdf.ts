@@ -133,7 +133,9 @@ export async function buildLotTechnicalPdf(input:LotReportInput){
     newPageIf(30);
     const {sample,analysis,formRelease}=item;
     setText(8.5,NAVY,true);doc.text(`${sample.labelBase} • ${sampleProcessLabel(sample)} • ${formatDate(sampleCollectionDate(sample))}`,margin,y);y+=4.5;
-    setText(7.4,MUTED);doc.text(`Referência: ${analysis.targetMpa!==undefined?`${analysis.targetMpa.toFixed(2)} MPa`:'não configurada'}   28d: ${analysis.controlAverage!==undefined?`${analysis.controlAverage.toFixed(2)} MPa`:'aguardando'}   Reserva: ${analysis.reserveDecision}`,margin,y);y+=4;
+    const controlLabel=analysis.controlAverage!==undefined?`${analysis.controlAverage.toFixed(2)} MPa`:sample.historicalBaselineClosed?'sem dado na fonte':'aguardando';
+    const reserveLabel=sample.historicalBaselineClosed?'histórico':analysis.reserveDecision;
+    setText(7.4,MUTED);doc.text(`Referência: ${analysis.targetMpa!==undefined?`${analysis.targetMpa.toFixed(2)} MPa`:'não configurada'}   28d: ${controlLabel}   Reserva: ${reserveLabel}`,margin,y);y+=4;
     setText(7.4,analysis.tone==='danger'?RED:analysis.tone==='good'?GREEN:MUTED,true);doc.text(analysis.headline,margin,y);y+=4;
     setText(7.1,MUTED);const lines=wrap(analysis.summary,contentW).slice(0,3);doc.text(lines,margin,y);y+=lines.length*3.5;
     if(formRelease.applicable){setText(7.1,MUTED,true);doc.text(`Baixa idade: ${formRelease.headline}`,margin,y);y+=4}

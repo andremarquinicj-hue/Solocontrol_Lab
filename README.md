@@ -1,155 +1,207 @@
-> **v0.7.1:** correção de compatibilidade TypeScript/Vercel para iteração de `Map` com target ES5. Nenhuma funcionalidade da v0.7.0 foi removida.
+# Solocontrol Lab v0.8.0 — Base histórica consolidada + início operacional em 28/09/2026
 
-# Solocontrol Lab v0.7.1 — Operação diária + base atualizada de rupturas
+Esta é a versão consolidada para colocar a Villa Arauco em operação diária no Solocontrol Lab a partir de **28/09/2026**.
 
-Versão consolidada recomendada para publicação.
+A v0.8.0 contém todas as funções anteriores e incorpora a planilha final enviada em 23/09/2026:
 
-A v0.7.0 contém tudo o que já estava na v0.6.1 e acrescenta a atualização baseada na planilha enviada em 22/09/2026:
+`344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS(1).xlsx`
 
-`344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS.xlsx`
+## Objetivo da versão
 
-## O que foi corrigido
+Separar claramente dois períodos:
 
-### 1. Nova planilha de CPs / rupturas
-A tela `Importar / Sincronizar Excel` agora reconhece dois formatos diferentes:
+- **Histórico anterior a 28/09/2026**: permanece integralmente rastreável, mas não gera tarefas, atrasos ou pendências operacionais retroativas.
+- **Operação a partir de 28/09/2026**: fichas novas passam a alimentar agenda, delegação, alertas, rompimentos, tanque, relatórios e indicadores em tempo real.
 
-1. planilha de concretagens, com Quadra/Lote/volume/laudo;
-2. planilha atualizada de CPs/rupturas, com MPa de projeto, 7d, 28d, 63d, AP/RP e observações.
+Nenhum resultado ausente na fonte histórica é inventado. Quando a planilha não possui determinado resultado, o sistema mostra **“sem dado na fonte / histórico encerrado”** e preserva a ausência como parte da rastreabilidade.
 
-A planilha de rupturas **não cria uma nova concretagem**. Ela atualiza os registros espaciais já existentes quando o vínculo é seguro.
+## Base final de rupturas incorporada
 
-### 2. Base recebida já embutida na versão
-A planilha enviada pelo coordenador já foi convertida e incluída em:
+O pacote contém:
 
-`public/data/villa-arauco-rupturas-2026-09-22.json`
+`public/data/villa-arauco-rupturas-final-2026-09-23.json`
 
-Na tela de histórico da Villa Arauco aparece:
-
-`Atualização de CPs e rupturas de 22/09/2026`
-
-Basta:
-
-1. clicar em `Preparar sincronização`;
-2. revisar a prévia;
-3. clicar em `Aplicar atualização`.
-
-### 3. Resultado da análise da planilha recebida
-A fonte possui:
+Resumo da planilha recebida:
 
 - 2 abas;
 - 1.323 linhas reconhecidas;
-- período de 03/02/2026 a 17/06/2026;
+- período informado na fonte: 03/02/2026 a 17/06/2026;
 - MPa de projeto;
-- resultados de 7, 28 e 63 dias;
+- resultados de 7 dias;
+- resultados de 28 dias;
+- informações de 63 dias;
 - AP/RP;
-- observações, inclusive descarte de CPs de 63 dias e registros de NC.
+- observações;
+- menções a descarte de CPs de 63 dias;
+- ocorrências históricas/NC descritas na própria fonte.
 
-Ao comparar com os 951 registros espaciais já existentes da Villa Arauco:
+SHA-256 da planilha utilizada:
 
-- 884 linhas possuem vínculo seguro;
-- 878 fichas existentes podem ser atualizadas;
-- 439 linhas não possuem informação suficiente para um vínculo espacial seguro;
-- essas 439 linhas ficam preservadas no `Arquivo complementar de rupturas`, sem inventar Quadra/Lote e sem duplicar concretagens.
+`0a4dd8bc4acb0fc61ca7230c1353f50d7bd45db76605c5cb718d66572410489f`
 
-Essa separação é proposital para proteger a rastreabilidade.
+## Migração automática da base histórica
 
-## Data real da coleta / amostragem
+Na primeira abertura interna após o deploy, o sistema executa uma migração única e idempotente:
 
-Novas fichas possuem:
+1. carrega os registros históricos existentes da Villa Arauco no Firebase;
+2. cruza a base final de rupturas com as fichas existentes quando há vínculo seguro;
+3. atualiza MPa de projeto, resultados e observações encontrados na fonte;
+4. preserva todas as 1.323 linhas da planilha no Arquivo Histórico de Rupturas;
+5. registros que não podem ser vinculados com segurança a Quadra/Lote ficam arquivados sem vínculo espacial — não são descartados nem inventados;
+6. todas as fichas anteriores a 28/09/2026 são retiradas da fila operacional;
+7. salva um marcador de migração para não repetir a operação em cada acesso.
 
-- data da coleta;
-- horário da coleta;
-- data/hora da moldagem;
-- data/hora em que a ficha foi lançada no sistema.
+## “Sem pendência” significa operação limpa, não dados inventados
 
-Assim, se uma concretagem ocorrer no sábado e for digitada na segunda-feira, o sistema continua atribuindo a concretagem e o relatório diário à **data real da coleta**.
+O histórico anterior pode conter:
 
-A data de criação do registro permanece no histórico de auditoria.
+- idade sem resultado na fonte;
+- observação de NC antiga;
+- “sem controle” na planilha antiga;
+- CP de 63 dias descartado;
+- CP de 63 dias já rompido.
 
-## Relatório técnico em PDF
+Essas informações continuam registradas e consultáveis. Porém, não aparecem como tarefa ativa a partir do corte operacional.
 
-O Dossiê Técnico do Lote agora possui:
+Uma ruptura antiga sem resultado passa a aparecer como:
 
-- `Gerar PDF`
-- `PDF / WhatsApp`
+`Histórico encerrado — resultado não disponível na fonte consolidada`
 
-O PDF inclui:
+Ela não aparece como “atrasada” e não cria atividade para a equipe.
 
-- identificação da obra;
-- Quadra/Lote;
-- cliente e executora;
-- quantidade de concretagens;
-- volume controlado;
-- ensaios/resultados;
-- rastreabilidade das concretagens;
-- resultados por idade;
-- gráfico de evolução da resistência;
-- MPa de projeto;
-- análise técnica automática de apoio;
-- observações e ressalvas técnicas.
+## Data de início da operação diária
 
-No celular, quando o navegador suporta compartilhamento de arquivos, o próprio PDF pode ser enviado pelo menu de compartilhamento.
+A Villa Arauco recebe:
 
-No computador, o sistema baixa o PDF e abre o WhatsApp Web com uma mensagem pronta para o usuário anexar o arquivo.
+`Início da operação diária no sistema: 28/09/2026`
 
-O Portal do Cliente possui a mesma geração de PDF, em versão apropriada para acompanhamento externo.
+A partir dessa data, o fluxo normal passa a valer integralmente:
 
-## Planilha atualizada e CP de 63 dias
+- coleta/amostragem;
+- ficha física;
+- lançamento digital;
+- slump;
+- identificação da utilização do concreto;
+- CPs individualizados;
+- programação de 12 h / 19 h / 24 h / 7 d / 28 d / 63 d conforme processo;
+- delegação;
+- fotos;
+- cargas;
+- resultados em MPa;
+- análise técnica;
+- tanque;
+- descarte rastreado;
+- relatório diário;
+- mapa;
+- Portal do Cliente.
 
-Quando a fonte histórica informa que o CP de reserva já foi descartado ou já foi ensaiado aos 63 dias, a análise técnica passa a respeitar essa informação e não apresenta o CP como uma nova reserva pendente.
+## Coleta em um dia e digitação depois
 
-## Fluxo Villa Arauco preservado
+A ficha possui campos separados para:
 
-Continuam disponíveis:
+- **Data da coleta / amostragem**;
+- Horário da coleta;
+- Data/hora da moldagem;
+- Data/hora de criação do registro no sistema.
 
-### Radier
-- 6 CPs
-- 2 aos 7 dias
-- 2 aos 28 dias
-- 2 aos 63 dias
-- slump configurável, perfil inicial 8 ± 1 cm
+Exemplo:
 
-### Paredes / Lajes / Oitão / Platibanda
-- 8 CPs
-- 2 inicialmente em 12 h, com reprogramação dos mesmos CPs para 19 h ou 24 h quando necessário
-- 2 aos 7 dias
-- 2 aos 28 dias
-- 2 aos 63 dias
-- perfis de slump configuráveis por processo
+- concretagem e coleta no sábado: 26/09;
+- ficha digitada na segunda: 28/09.
 
-Os critérios de MPa e a regra do par de CPs permanecem configuráveis na obra.
+O sistema usa **26/09** como data da atividade da obra e preserva **28/09** como data de lançamento/auditoria.
 
-## Compatibilidade
+## Histórico de rupturas completo
 
-Os registros históricos antigos continuam funcionando.
+Em `Importar / Exportar` existe uma tabela pesquisável com todas as linhas da fonte final.
 
-A atualização de rupturas complementa os registros existentes em vez de apagá-los.
+Pode-se pesquisar por:
 
-Nenhuma linha da nova planilha é simplesmente descartada: registros que não podem ser ligados com segurança a Quadra/Lote são preservados separadamente.
+- identificação;
+- data;
+- concreteira;
+- NF;
+- AP/RP;
+- observação.
 
-## Dependência nova
+Assim, mesmo uma linha que não possua vínculo seguro com Quadra/Lote continua disponível no sistema.
 
-A v0.7.0 utiliza `jspdf` para gerar o relatório técnico em PDF no navegador.
+## Dashboard e Central do Coordenador
 
-O Vercel instalará essa dependência automaticamente a partir do `package.json`.
+Registros históricos arquivados deixam de entrar em:
 
-## Segurança
+- sino de alertas;
+- agenda de rompimentos;
+- atrasados;
+- Central do Coordenador;
+- carga de equipe;
+- Gestão do Tanque;
+- pendências executivas.
 
-Durante a validação mantenha as regras atuais do piloto.
+Os indicadores de volume, progresso e rastreabilidade histórica continuam utilizando a base anterior.
 
-Ainda não publique:
+## Dossiê Técnico do Lote
+
+O mapa continua permitindo abrir um dossiê completo por Quadra/Lote:
+
+- resumo;
+- concretagens;
+- cargas e rompimentos;
+- evolução da cura;
+- análise técnica.
+
+Para o histórico consolidado, resultados ausentes aparecem como **“sem dado na fonte”**, nunca como pendência operacional.
+
+## PDF / WhatsApp
+
+O relatório técnico do lote pode ser:
+
+- gerado em PDF;
+- baixado;
+- compartilhado pelo menu nativo em dispositivos compatíveis;
+- encaminhado pelo WhatsApp/WhatsApp Web.
+
+O PDF inclui rastreabilidade, resultados, gráfico de evolução e análise de apoio.
+
+## Portal do Cliente
+
+A versão externa mantém:
+
+- Dashboard profissional;
+- progresso da obra;
+- volume;
+- ensaios;
+- mapa;
+- relatório técnico por lote;
+- gráfico da cura;
+- PDF de acompanhamento.
+
+Dados internos como gestão do tanque, descarte, auditoria e decisões operacionais permanecem restritos à Solocontrol.
+
+## Parâmetros técnicos da Villa Arauco
+
+A planilha final informa **25 MPa** como referência de projeto nas linhas reconhecidas, portanto o sistema pode utilizar 25 MPa como referência histórica/padrão inicial da obra.
+
+Os critérios específicos de baixa idade/liberação de formas e a regra de avaliação do par de CPs devem continuar configurados conforme os documentos oficiais da obra e não são inferidos pela planilha.
+
+## Firebase e segurança
+
+Durante esta etapa de validação, mantenha as regras atuais do piloto.
+
+Não publique ainda:
 
 - `firestore.production.rules`
 - `storage.production.rules`
 
-até os usuários nominais/perfis estarem testados.
+até que os usuários nominais/perfis tenham sido validados.
 
-## Validação do pacote
+## Validação local do código
 
-Foram executadas:
+Foi executada uma checagem interna de tipos com stubs das dependências externas e uma transpilação sintática de todos os arquivos TypeScript/TSX.
 
-- verificação estrutural de tipos dos arquivos internos;
-- transpilação/sintaxe dos 42 arquivos TypeScript/TSX;
-- conferência da base JSON embutida com 1.323 linhas.
+Resultado da transpilação:
 
-O build final com Next.js/Firebase/jsPDF será executado pelo Vercel no deploy.
+- 44 arquivos TS/TSX;
+- 0 erros de sintaxe.
+
+O `npm install` local não concluiu dentro do limite do ambiente, portanto o build completo com as dependências reais Next/Firebase/jsPDF deve ser confirmado pelo Vercel no deploy.

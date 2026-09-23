@@ -13,6 +13,7 @@ import { useWorkScope } from './WorkScope';
 import { useAuthScope } from './AuthScope';
 import { listSamples } from '@/lib/store';
 import { isoToday, isRuptureOverdue } from '@/lib/utils';
+import HistoricalBaselineMigration from './HistoricalBaselineMigration';
 
 const internalLinks = [
   { href: '/', label: 'Dashboard', icon: BarChart3 },
@@ -49,8 +50,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
     if(publicLayout)return;
     listSamples().then(samples=>{
       const today=isoToday();
-      const scoped=selectedWorkId==='all'?samples:samples.filter(s=>s.workId===selectedWorkId);
-      setAlerts(scoped.filter(s=>!s.archived).flatMap(s=>s.ruptures).filter(r=>r.status!=='concluido'&&(r.dueDate===today||isRuptureOverdue(r))).length);
+      const scoped=(selectedWorkId==='all'?samples:samples.filter(s=>s.workId===selectedWorkId))
+        .filter(s=>!s.archived&&s.includeInOperations!==false&&s.source!=='historical_excel');
+      setAlerts(scoped.flatMap(s=>s.ruptures).filter(r=>r.status!=='concluido'&&(r.dueDate===today||isRuptureOverdue(r))).length);
     }).catch(()=>{});
   },[selectedWorkId,pathname,publicLayout]);
 
@@ -70,6 +72,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
+      <HistoricalBaselineMigration/>
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <div className="brand-block">
           <Image src="/logo-solocontrol.png" width={205} height={102} alt="Solocontrol" className="brand-logo" priority />

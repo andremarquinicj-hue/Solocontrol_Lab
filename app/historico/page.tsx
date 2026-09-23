@@ -1,6 +1,6 @@
 'use client';
 
-import { DatabaseZap, Download, FileSpreadsheet, History, Link2Off, RefreshCw, UploadCloud } from 'lucide-react';
+import { Archive, CheckCircle2, DatabaseZap, Download, FileSpreadsheet, History, RefreshCw, UploadCloud } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
 import { exportControlWorkbook, ImportSummary, parseHistoricalWorkbook } from '@/lib/historical';
@@ -16,6 +16,7 @@ import { listRuptureImports, listSamples, saveRuptureImportsBatch, saveSamplesBa
 import { RuptureImportRecord, Sample } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { isVillaAraucoWork } from '@/lib/process-profiles';
+import { finalizeHistoricalSample, OPERATIONAL_CUTOVER_DATE } from '@/lib/historical-baseline';
 
 export default function HistoricoPage(){
   const { works, selectedWorkId, selectedWork, setSelectedWorkId, refreshWorks } = useWorkScope();
@@ -28,6 +29,7 @@ export default function HistoricoPage(){
   const [loading,setLoading]=useState(false);
   const [message,setMessage]=useState('');
   const [targetWorkId,setTargetWorkId]=useState(selectedWorkId==='all'?'':selectedWorkId);
+  const [ruptureSearch,setRuptureSearch]=useState('');
 
   async function reload(){
     const [samples,imports]=await Promise.all([listSamples(),listRuptureImports()]);
@@ -41,6 +43,9 @@ export default function HistoricoPage(){
   const history=useMemo(()=>scoped.filter(s=>s.source==='historical_excel'),[scoped]);
   const scopedRuptureImports=useMemo(()=>selectedWorkId==='all'?ruptureImports:ruptureImports.filter(r=>r.workId===selectedWorkId),[ruptureImports,selectedWorkId]);
   const unresolved=useMemo(()=>scopedRuptureImports.filter(r=>r.matchStatus!=='matched'),[scopedRuptureImports]);
+  const visibleRuptureArchive=useMemo(()=>{const q=ruptureSearch.trim().toLowerCase();if(!q)return scopedRuptureImports;return scopedRuptureImports.filter(r=>[r.concreteDate,r.sourceSheet,r.identification,r.supplier,r.invoice,r.projectMpa,r.ap,r.rp,r.observation].some(value=>String(value??'').toLowerCase().includes(q)))},[scopedRuptureImports,ruptureSearch]);
+  const historicalClosed=useMemo(()=>scoped.filter(s=>s.historicalBaselineClosed||s.archived&&s.includeInOperations===false).length,[scoped]);
+  const priorOperationalPending=useMemo(()=>scoped.filter(s=>(s.collectedAt||s.moldedAt)<OPERATIONAL_CUTOVER_DATE&&!s.archived&&s.includeInOperations!==false).length,[scoped]);
   const isVilla=Boolean(targetWork&&isVillaAraucoWork(targetWork));
 
   function resetPreview(){setPreview([]);setSummary(undefined);setRupturePreview(undefined);setFileName('');}
@@ -69,9 +74,9 @@ export default function HistoricoPage(){
 
   async function loadBundledUpdate(){
     if(!targetWork||!isVilla)return;
-    setLoading(true);setMessage('Carregando a base de rupturas recebida em 22/09/2026...');resetPreview();
+    setLoading(true);setMessage('Carregando a base final de rupturas recebida em 23/09/2026...');resetPreview();
     try{
-      const response=await fetch('/data/villa-arauco-rupturas-2026-09-22.json',{cache:'no-store'});
+      const response=await fetch('/data/villa-arauco-rupturas-final-2026-09-23.json',{cache:'no-store'});
       if(!response.ok)throw new Error('Arquivo de atualização não encontrado no pacote.');
       const payload=await response.json() as BundledRupturePayload;
       const records=bundledPayloadToRecords(payload,targetWork);
@@ -87,7 +92,7 @@ export default function HistoricoPage(){
     if(!preview.length||loading)return;
     setLoading(true);setMessage(`Importando ${preview.length} registros históricos...`);
     try{
-      await saveSamplesBatch(preview);
+      await saveSamplesBatch(preview.map(finalizeHistoricalSample));
       await reload();await refreshWorks();
       if(targetWorkId)setSelectedWorkId(targetWorkId);
       setMessage(`${preview.length} registros históricos importados com sucesso em ${targetWork?.name}.`);
@@ -101,7 +106,7 @@ export default function HistoricoPage(){
     if(!rupturePreview||loading)return;
     setLoading(true);setMessage(`Atualizando ${rupturePreview.summary.matchedSamples} ficha(s) e arquivando ${rupturePreview.summary.sourceRows} linha(s) da planilha de rupturas...`);
     try{
-      if(rupturePreview.updatedSamples.length)await saveSamplesBatch(rupturePreview.updatedSamples);
+      if(rupturePreview.updatedSamples.length)await saveSamplesBatch(rupturePreview.updatedSamples.map(finalizeHistoricalSample));
       await saveRuptureImportsBatch(rupturePreview.records);
       await reload();await refreshWorks();
       if(targetWorkId)setSelectedWorkId(targetWorkId);
@@ -121,15 +126,17 @@ export default function HistoricoPage(){
     <section className="page-heading"><div><span className="eyebrow">BASE HISTÓRICA E RESULTADOS</span><h1>Importar / Sincronizar Excel</h1><p>O sistema reconhece a planilha de concretagens e a planilha atualizada de controle de CPs/rupturas.</p></div><button className="button secondary" onClick={exportCurrent} disabled={selectedWorkId==='all'}><Download size={17}/> Exportar obra selecionada</button></section>
 
     <section className="history-kpis">
-      <div className="panel mini-kpi"><History/><div><span>Registros históricos</span><strong>{history.length}</strong></div></div>
-      <div className="panel mini-kpi"><FileSpreadsheet/><div><span>Com laudo</span><strong>{history.filter(s=>s.reportNumber).length}</strong></div></div>
-      <div className="panel mini-kpi"><DatabaseZap/><div><span>Linhas de ruptura arquivadas</span><strong>{scopedRuptureImports.length}</strong></div></div>
-      <div className="panel mini-kpi"><Link2Off/><div><span>Sem vínculo espacial</span><strong>{unresolved.length}</strong></div></div>
+      <div className="panel mini-kpi"><History/><div><span>Fichas históricas</span><strong>{history.length}</strong></div></div>
+      <div className="panel mini-kpi"><DatabaseZap/><div><span>Linhas da base de rupturas</span><strong>{scopedRuptureImports.length}</strong></div></div>
+      <div className="panel mini-kpi"><Archive/><div><span>Arquivo complementar</span><strong>{unresolved.length}</strong></div></div>
+      <div className="panel mini-kpi"><CheckCircle2/><div><span>Pendências anteriores</span><strong>{priorOperationalPending}</strong></div></div>
     </section>
 
+    {isVilla&&<section className="panel historical-baseline-banner"><div className="panel-header"><div><span className="eyebrow">MARCO OPERACIONAL</span><h2>Histórico consolidado até 27/09/2026</h2><p><strong>{historicalClosed}</strong> ficha(s) anteriores ficam arquivadas para rastreabilidade e não entram na agenda operacional. A operação diária passa a considerar novas fichas com coleta em <b>28/09/2026 ou depois</b>.</p></div><CheckCircle2/></div></section>}
+
     {isVilla&&<section className="panel bundled-update-card">
-      <div><span className="eyebrow">VILLA ARAUCO • BASE RECEBIDA</span><h2>Atualização de CPs e rupturas de 22/09/2026</h2><p>O pacote já contém a planilha <b>344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS</b> convertida para sincronização segura. Ela atualiza MPa de projeto e resultados sem apagar Quadra, Lote, volume ou laudo da base existente.</p></div>
-      <button className="button primary" onClick={loadBundledUpdate} disabled={loading}><RefreshCw size={17}/>{loading?'Processando...':'Preparar sincronização'}</button>
+      <div><span className="eyebrow">VILLA ARAUCO • BASE FINAL RECEBIDA</span><h2>Controle de CPs / rupturas incorporado ao pacote</h2><p>A versão contém as <b>1.323 linhas</b> da planilha enviada em 23/09/2026. A consolidação é executada automaticamente uma única vez no Firebase. Este botão fica disponível apenas para conferência/reprocessamento manual.</p></div>
+      <button className="button secondary" onClick={loadBundledUpdate} disabled={loading}><RefreshCw size={17}/>{loading?'Processando...':'Conferir base final'}</button>
     </section>}
 
     <section className="two-columns import-columns">
@@ -144,11 +151,11 @@ export default function HistoricoPage(){
 
     {rupturePreview&&<section className="panel rupture-sync-preview">
       <div className="panel-header"><div><h2>Prévia — atualização de CPs / rupturas</h2><p>Os dados espaciais existentes serão preservados. Resultados serão atualizados apenas quando o vínculo for seguro.</p></div><button className="button primary" onClick={applyRuptureUpdate} disabled={loading}>{loading?'Sincronizando...':'Aplicar atualização'}</button></div>
-      <div className="preview-stats"><div><span>Linhas fonte</span><b>{rupturePreview.summary.sourceRows}</b></div><div><span>Linhas vinculadas</span><b>{rupturePreview.summary.matchedRows}</b></div><div><span>Fichas atualizadas</span><b>{rupturePreview.summary.matchedSamples}</b></div><div><span>Sem vínculo</span><b>{rupturePreview.summary.unmatchedRows}</b></div><div><span>Ambíguas</span><b>{rupturePreview.summary.ambiguousRows}</b></div><div><span>Período</span><b>{formatDate(rupturePreview.summary.firstDate)} → {formatDate(rupturePreview.summary.lastDate)}</b></div></div>
-      <div className="sync-note"><b>Importante:</b> registros sem vínculo espacial não são descartados. Eles ficam arquivados para rastreabilidade, mas não alteram Quadra/Lote nem aumentam artificialmente a quantidade de concretagens.</div>
-      <div className="table-wrap"><table><thead><tr><th>Data</th><th>Origem</th><th>ID</th><th>Concreteira</th><th>NF</th><th>MPa projeto</th><th>7d</th><th>28d</th><th>Vínculo</th></tr></thead><tbody>{rupturePreview.records.slice(0,18).map(r=><tr key={r.id}><td>{formatDate(r.concreteDate)}</td><td>{r.sourceSheet.includes('parede')?'Parede / Oitão':'Radier / Muro'}</td><td>{r.identification||'—'}</td><td>{r.supplier||'—'}</td><td>{r.invoice||'—'}</td><td>{r.projectMpa!==undefined?`${r.projectMpa} MPa`:'—'}</td><td>{r.results.find(x=>x.ageDays===7)?.resistanceMpa??'—'}</td><td>{r.results.find(x=>x.ageDays===28)?.resistanceMpa??'—'}</td><td><span className={`status ${r.matchStatus==='matched'?'concluido':r.matchStatus==='ambiguous'?'pendente':'em_execucao'}`}>{r.matchStatus==='matched'?'Vinculado':r.matchStatus==='ambiguous'?'Revisar':'Arquivo complementar'}</span></td></tr>)}</tbody></table></div>
+      <div className="preview-stats"><div><span>Linhas fonte</span><b>{rupturePreview.summary.sourceRows}</b></div><div><span>Linhas vinculadas</span><b>{rupturePreview.summary.matchedRows}</b></div><div><span>Fichas atualizadas</span><b>{rupturePreview.summary.matchedSamples}</b></div><div><span>Arquivo complementar</span><b>{rupturePreview.summary.unmatchedRows+rupturePreview.summary.ambiguousRows}</b></div><div><span>Pendência operacional</span><b>0</b></div><div><span>Período</span><b>{formatDate(rupturePreview.summary.firstDate)} → {formatDate(rupturePreview.summary.lastDate)}</b></div></div>
+      <div className="sync-note"><b>Importante:</b> linhas que não podem ser associadas com segurança a uma Quadra/Lote permanecem no arquivo histórico complementar. Elas não geram tarefas, alertas ou pendências operacionais.</div>
+      <div className="table-wrap"><table><thead><tr><th>Data</th><th>Origem</th><th>ID</th><th>Concreteira</th><th>NF</th><th>MPa projeto</th><th>7d</th><th>28d</th><th>Vínculo</th></tr></thead><tbody>{rupturePreview.records.slice(0,18).map(r=><tr key={r.id}><td>{formatDate(r.concreteDate)}</td><td>{r.sourceSheet.includes('parede')?'Parede / Oitão':'Radier / Muro'}</td><td>{r.identification||'—'}</td><td>{r.supplier||'—'}</td><td>{r.invoice||'—'}</td><td>{r.projectMpa!==undefined?`${r.projectMpa} MPa`:'—'}</td><td>{r.results.find(x=>x.ageDays===7)?.resistanceMpa??'—'}</td><td>{r.results.find(x=>x.ageDays===28)?.resistanceMpa??'—'}</td><td><span className={`status ${'concluido'}`}>{r.matchStatus==='matched'?'Vinculado':'Arquivo histórico'}</span></td></tr>)}</tbody></table></div>
     </section>}
 
-    {unresolved.length>0&&<section className="panel"><div className="panel-header"><div><h2>Arquivo complementar de rupturas sem vínculo espacial</h2><p>Estas linhas foram preservadas porque a planilha de CPs não informa Quadra/Lote suficiente para um vínculo seguro.</p></div><span className="badge muted">{unresolved.length} linha(s)</span></div><div className="table-wrap"><table><thead><tr><th>Data</th><th>Planilha</th><th>ID</th><th>Concreteira</th><th>NF</th><th>MPa projeto</th><th>7d</th><th>28d</th><th>Observação</th></tr></thead><tbody>{unresolved.slice(0,25).map(r=><tr key={r.id}><td>{formatDate(r.concreteDate)}</td><td>{r.sourceSheet}</td><td>{r.identification||'—'}</td><td>{r.supplier||'—'}</td><td>{r.invoice||'—'}</td><td>{r.projectMpa!==undefined?`${r.projectMpa} MPa`:'—'}</td><td>{r.results.find(x=>x.ageDays===7)?.resistanceMpa??'—'}</td><td>{r.results.find(x=>x.ageDays===28)?.resistanceMpa??'—'}</td><td>{r.observation||'—'}</td></tr>)}</tbody></table></div></section>}
+    {scopedRuptureImports.length>0&&<section className="panel"><div className="panel-header"><div><h2>Arquivo completo da planilha de CPs / rupturas</h2><p>Todas as linhas da fonte ficam disponíveis para consulta, inclusive as que não puderam ser ligadas com segurança a Quadra/Lote.</p></div><span className="badge muted">{visibleRuptureArchive.length} / {scopedRuptureImports.length}</span></div><div className="search-box"><input value={ruptureSearch} onChange={e=>setRuptureSearch(e.target.value)} placeholder="Buscar por NF, identificação, concreteira, data, AP/RP ou observação..."/></div><div className="table-wrap rupture-archive-table"><table><thead><tr><th>Data</th><th>Origem</th><th>ID</th><th>Concreteira</th><th>NF</th><th>MPa projeto</th><th>7d</th><th>28d</th><th>63d</th><th>AP</th><th>RP</th><th>Observação</th><th>Destino</th></tr></thead><tbody>{visibleRuptureArchive.map(r=><tr key={r.id}><td>{formatDate(r.concreteDate)}</td><td>{r.sourceSheet.includes('parede')?'Parede':'Radier'}</td><td>{r.identification||'—'}</td><td>{r.supplier||'—'}</td><td>{r.invoice||'—'}</td><td>{r.projectMpa!==undefined?`${r.projectMpa} MPa`:'—'}</td><td>{r.results.find(x=>x.ageDays===7)?.resistanceMpa??'—'}</td><td>{r.results.find(x=>x.ageDays===28)?.resistanceMpa??'—'}</td><td>{r.results.find(x=>x.ageDays===63)?.resistanceMpa??'—'}</td><td>{r.ap||'—'}</td><td>{r.rp||'—'}</td><td>{r.observation||'—'}</td><td>{r.matchStatus==='matched'?<span className="status concluido">Ficha vinculada</span>:<span className="legacy-closed-note">Arquivo histórico</span>}</td></tr>)}</tbody></table></div></section>}
   </div>
 }

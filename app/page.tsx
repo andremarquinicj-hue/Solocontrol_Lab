@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, BarChart3, CalendarDays, ClipboardCheck, FileCheck2, FlaskConical, Layers3, PackageCheck, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ClipboardCheck, FileCheck2, FlaskConical, Layers3, PackageCheck, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkScope } from '@/components/WorkScope';
 import StatCard from '@/components/StatCard';
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const totalVolume = scoped.reduce((a,s)=>a+sampleVolume(s),0);
   const totalTests = completedTests(scoped);
   const reportCount = uniqueReports(scoped);
-  const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle').sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))), [scoped]);
+  const noControlSamples = useMemo(() => scoped.filter(s=>s.historicalState==='sem_controle'&&!s.historicalBaselineClosed&&!s.archived&&s.includeInOperations!==false).sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))), [scoped]);
   const noControl = noControlSamples.length;
   const progress = selectedWorkId !== 'all' ? elementProgress(scoped, selectedWork) : [];
   const eligibleReserveCount = useMemo(()=>scoped.reduce((sum,sample)=>{
@@ -85,7 +85,7 @@ export default function DashboardPage() {
       volume: ws.reduce((a,s)=>a+sampleVolume(s),0),
       tests: completedTests(ws),
       progress: overallProgress(ws,work),
-      noControl: ws.filter(s=>s.historicalState==='sem_controle').length,
+      noControl: ws.filter(s=>s.historicalState==='sem_controle'&&!s.historicalBaselineClosed&&!s.archived&&s.includeInOperations!==false).length,
     };
   }).filter(row=>row.samples>0 || row.work.active), [works,samples]);
 
@@ -94,6 +94,8 @@ export default function DashboardPage() {
       <div><span className="eyebrow">VISÃO GERENCIAL</span><h1>{selectedWorkId==='all'?'Dashboard da Solocontrol':selectedWork?.name || 'Dashboard da Obra'}</h1><p>{selectedWorkId==='all'?'Visão consolidada das obras e da operação do laboratório.':'Produção, concreto, ensaios e avanço físico desta obra.'}</p></div>
       <Link className="button primary" href="/lancamento">+ Lançar nova ficha</Link>
     </section>
+
+    {selectedWork&&String(selectedWork.name).toUpperCase().includes('ARAUCO')&&<section className="panel operational-cutover-strip"><CheckCircle2/><div><b>Operação diária a partir de {formatDate(selectedWork.operationalStartDate||'2026-09-28')}</b><span>Todo o histórico anterior permanece disponível para rastreabilidade, porém fora da agenda de pendências. Novas fichas usam a data real da coleta.</span></div></section>}
 
     {selectedWorkId==='all' ? <>
       <section className="stats-grid">

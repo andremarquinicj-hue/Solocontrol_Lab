@@ -27,6 +27,7 @@ const KEYS = {
   checklists: 'solocontrol.checklists',
   users: 'solocontrol.users',
   ruptureImports: 'solocontrol.ruptureImports',
+  systemMigrations: 'solocontrol.systemMigrations',
 };
 
 function loadLocal<T>(key: string, fallback: T): T {
@@ -76,6 +77,36 @@ export async function logAudit(input: Omit<AuditEvent, 'id' | 'createdAt' | 'act
   const current = loadLocal<AuditEvent[]>(KEYS.audits, []);
   saveLocal(KEYS.audits, [event, ...current].slice(0, 5000));
   return event;
+}
+
+
+export interface SystemMigrationMarker {
+  id: string;
+  appliedAt: string;
+  version: string;
+  workId?: string;
+  summary?: Record<string, string | number | boolean | null>;
+}
+
+export async function getSystemMigration(id:string):Promise<SystemMigrationMarker|undefined>{
+  if(firebaseConfigured&&db){
+    try{
+      await ensureFirebaseUser();
+      const snap=await getDoc(doc(db,'systemMigrations',id));
+      if(snap.exists())return snap.data() as SystemMigrationMarker;
+    }catch(error){console.warn('Falha ao consultar migração do sistema:',error)}
+  }
+  const current=loadLocal<Record<string,SystemMigrationMarker>>(KEYS.systemMigrations,{});
+  return current[id];
+}
+
+export async function saveSystemMigration(marker:SystemMigrationMarker){
+  if(firebaseConfigured&&db){
+    await ensureFirebaseUser();
+    await setDoc(doc(db,'systemMigrations',marker.id),cleanForFirestore(marker));
+  }
+  const current=loadLocal<Record<string,SystemMigrationMarker>>(KEYS.systemMigrations,{});
+  saveLocal(KEYS.systemMigrations,{...current,[marker.id]:marker});
 }
 
 export async function listAuditEvents(): Promise<AuditEvent[]> {
@@ -319,5 +350,5 @@ export async function saveUserProfile(profile:UserProfile){if(firebaseConfigured
 
 export async function getBackupSnapshot(){
   const [samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles(),listRuptureImports()]);
-  return {generatedAt:new Date().toISOString(),version:'0.7.0',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
+  return {generatedAt:new Date().toISOString(),version:'0.8.0',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
 }

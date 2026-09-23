@@ -109,6 +109,19 @@ export function analyzeSample(sample: Sample, work?: Work): TechnicalAnalysis {
       ? ((controlAverage - r7avg) / r7avg) * 100
       : undefined;
 
+  if(sample.historicalBaselineClosed || (sample.archived && sample.includeInOperations===false)){
+    const resultText=controlAverage!==undefined
+      ? `Resultado médio registrado aos ${controlAgeDays} dias: ${controlAverage.toFixed(2)} MPa.`
+      : `A fonte histórica consolidada não possui resultado para ${controlAgeDays} dias nesta ficha.`;
+    return {
+      targetMpa, controlAgeDays, reserveAgeDays, thresholdMpa, evaluationMode, controlResults,
+      controlValue, controlAverage, controlMin, controlMax, trend7toControlPct,
+      reserveDecision:'not_applicable', tone:controlResults.length?'good':'neutral',
+      headline:'Histórico consolidado — sem pendência operacional',
+      summary:`${resultText} O registro anterior a 28/09/2026 foi preservado para rastreabilidade e não integra a agenda operacional atual.`,
+    };
+  }
+
   if (!reserve) {
     return {
       targetMpa, controlAgeDays, reserveAgeDays, thresholdMpa, evaluationMode, controlResults,
@@ -204,6 +217,14 @@ export function analyzeFormRelease(sample:Sample,work?:Work):FormReleaseAnalysis
   const planned=formReleasePlanItem(profile);
   const event=sample.ruptures.find(r=>r.purpose==='form_release')
     || (planned ? sample.ruptures.find(r=>Math.abs(r.ageDays-(planned.unit==='hours'?planned.value/24:planned.value))<0.001) : undefined);
+
+  if(sample.historicalBaselineClosed || (sample.archived && sample.includeInOperations===false)){
+    return {
+      applicable:Boolean(planned||event),evaluationMode:profile?.formReleaseEvaluationMode||'manual',decision:'not_applicable',tone:'neutral',rupture:event,
+      headline:'Histórico consolidado',
+      summary:'Registro anterior a 28/09/2026 preservado para rastreabilidade, sem ação operacional pendente.',
+    };
+  }
 
   if(!planned&&!event){
     return {

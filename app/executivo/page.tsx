@@ -21,7 +21,8 @@ export default function ExecutivePage(){
 
   const rows=useMemo(()=>works.map(work=>{
     const ws=samples.filter(s=>s.workId===work.id);
-    const ruptures=ws.flatMap(s=>s.ruptures);
+    const operational=ws.filter(s=>!s.archived&&s.includeInOperations!==false&&s.source!=='historical_excel');
+    const ruptures=operational.flatMap(s=>s.ruptures);
     const due=ruptures.filter(r=>r.status!=='concluido'&&(r.dueDate===today||isRuptureOverdue(r))).length;
     const totalDue=ruptures.filter(r=>r.status==='concluido'||r.dueDate<today||isRuptureOverdue(r)).length;
     const compliance=totalDue?Math.max(0,100-(due/totalDue*100)):100;

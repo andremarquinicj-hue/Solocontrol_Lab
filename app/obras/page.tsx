@@ -21,7 +21,7 @@ import {
 import { ageSpecToDays, makeId, parseAgeSpecToken } from '@/lib/utils';
 
 const blank={
-  id:'',number:'',name:'',client:'',contractor:'',location:'',plannedUnits:'',plannedVolumeM3:'',
+  id:'',number:'',name:'',client:'',contractor:'',location:'',operationalStartDate:'',plannedUnits:'',plannedVolumeM3:'',
   radier:'',paredes:'',lajes:'',oitaoes:'',muros:'',mapMode:'grid' as WorkMapMode,clientPortalEnabled:true,
   processMode:'generic' as 'villa_arauco'|'generic',
   defaultAges:'7d,14d,28d',defaultStrengthMpa:'',controlAgeDays:'28',reserveAgeDays:'63',
@@ -55,7 +55,7 @@ export default function WorksPage(){
     setMapFile(undefined);
     const villa=isVillaAraucoWork(work);
     setForm({
-      id:work.id,number:work.number||'',name:work.name||'',client:work.client||'',contractor:work.contractor||'',location:work.location||'',
+      id:work.id,number:work.number||'',name:work.name||'',client:work.client||'',contractor:work.contractor||'',location:work.location||'',operationalStartDate:work.operationalStartDate||'',
       plannedUnits:work.plannedUnits?String(work.plannedUnits):'',
       plannedVolumeM3:work.plannedVolumeM3?String(work.plannedVolumeM3):'',
       radier:work.plannedElements?.['RADIER']?String(work.plannedElements['RADIER']):'',
@@ -159,6 +159,7 @@ export default function WorksPage(){
         mapImage,
         mapMaxLot:form.mapMode==='villa_arauco'?28:undefined,
         clientPortalEnabled:form.clientPortalEnabled,
+        operationalStartDate:form.operationalStartDate||undefined,
         defaultStrengthMpa:n(form.defaultStrengthMpa),
         controlAgeDays:Number(form.controlAgeDays)||28,
         reserveAgeDays:Number(form.reserveAgeDays)||63,
@@ -211,6 +212,7 @@ export default function WorksPage(){
           <label>Cliente *<input value={form.client} onChange={e=>setForm({...form,client:e.target.value})}/></label><label>Construtora / executora<input value={form.contractor} onChange={e=>setForm({...form,contractor:e.target.value})} placeholder="Ex.: COPLAN"/></label>
           <label className="span-2">Nome da obra *<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
           <label className="span-2">Local<input value={form.location} onChange={e=>setForm({...form,location:e.target.value})} placeholder="Cidade / UF"/></label>
+          <label>Início da operação diária no sistema<input type="date" value={form.operationalStartDate} onChange={e=>setForm({...form,operationalStartDate:e.target.value})}/><small>Registros anteriores permanecem como histórico e não geram agenda operacional.</small></label>
           <label>Tipo de operação<select value={form.processMode} onChange={e=>setForm({...form,processMode:e.target.value as typeof form.processMode})}><option value="generic">Obra genérica / ensaios sob demanda</option><option value="villa_arauco">Villa Arauco — casas em paredes de concreto</option></select></label>
           <label>Unidades previstas<input type="number" min="0" value={form.plannedUnits} onChange={e=>setForm({...form,plannedUnits:e.target.value})}/></label>
           <label>Volume previsto (m³)<input value={form.plannedVolumeM3} onChange={e=>setForm({...form,plannedVolumeM3:e.target.value})}/></label>

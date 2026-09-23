@@ -41,7 +41,7 @@ export default function CoordinatorPage(){
   }
   useEffect(()=>{load()},[selectedWorkId]);
 
-  const scoped=useMemo(()=>samples.filter(s=>!s.archived&&(selectedWorkId==='all'||s.workId===selectedWorkId)),[samples,selectedWorkId]);
+  const scoped=useMemo(()=>samples.filter(s=>!s.archived&&s.includeInOperations!==false&&s.source!=='historical_excel'&&(selectedWorkId==='all'||s.workId===selectedWorkId)),[samples,selectedWorkId]);
   const tasks=useMemo(()=>scoped.flatMap(sample=>sample.ruptures.filter(r=>r.status!=='concluido'&&(r.dueDate===today||isRuptureOverdue(r))).map(r=>({sample,rupture:r,late:isRuptureOverdue(r)}))).sort((a,b)=>(a.rupture.dueAt||`${a.rupture.dueDate}T23:59`).localeCompare(b.rupture.dueAt||`${b.rupture.dueDate}T23:59`)),[scoped,today]);
   const outside=useMemo(()=>scoped.filter(s=>!['arquivo','arquivada',undefined].includes(s.sheetState)),[scoped]);
   const workload=useMemo(()=>team.map(member=>({member,count:tasks.filter(t=>t.rupture.responsible===member.name).length,done:scoped.flatMap(s=>s.ruptures).filter(r=>r.responsible===member.name&&r.completedAt?.slice(0,10)===today).length})),[team,tasks,scoped,today]);

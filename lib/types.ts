@@ -75,6 +75,8 @@ export interface RuptureEvent {
   measurements?: RuptureMeasurement[];
   importedResultsMpa?: number[];
   importSource?: string;
+  historicalNoResult?: boolean;
+  historicalClosedAt?: string;
   specimenIds?: string[];
   completedAt?: string;
   notes?: string;
@@ -172,6 +174,9 @@ export interface Sample {
   qualityObservation?: string;
   reserveDisposition?: 'discarded' | 'tested' | 'scheduled' | 'unknown';
   ruptureImportUpdatedAt?: string;
+  historicalBaselineClosed?: boolean;
+  historicalBaselineVersion?: string;
+  historicalIssueNote?: string;
   physicalLocation: string;
   sheetState?: SheetState;
   sheetCustodian?: string;
@@ -205,6 +210,7 @@ export interface Work {
   mapImage?: string;
   mapMaxLot?: number;
   clientPortalEnabled?: boolean;
+  operationalStartDate?: string;
   processMode?: 'villa_arauco' | 'generic';
   processProfiles?: Partial<Record<ConcreteProcessType, ConcreteProcessProfile>>;
   controlEvaluationMode?: StrengthEvaluationMode;

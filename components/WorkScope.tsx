@@ -36,6 +36,7 @@ function virtualWorkFromSample(sample: Sample): Work {
     reserveReleaseThresholdPct: 100,
     reserveReleaseEnabled: true,
     tankName: 'Tanque 01',
+    operationalStartDate: isVilla ? '2026-09-28' : undefined,
   };
 }
 

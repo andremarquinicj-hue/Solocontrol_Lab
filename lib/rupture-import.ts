@@ -26,6 +26,7 @@ export interface RuptureReconciliation {
 export interface BundledRupturePayload {
   sourceFile: string;
   receivedAt: string;
+  sha256?: string;
   workHint?: string;
   recordCount: number;
   period?: { first?: string; last?: string };
