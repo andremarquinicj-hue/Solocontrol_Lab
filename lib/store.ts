@@ -263,17 +263,34 @@ export async function deleteWork(workId: string, { deleteLinkedSamples = true }:
   return { deletedSamples: deleteLinkedSamples ? linkedSamples.length : 0 };
 }
 
+function normalizedPersonName(value:string){
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+}
+
+function mergeDefaultTeam(current:TeamMember[]){
+  const byName=new Set(current.map(member=>normalizedPersonName(member.name)));
+  const missing=demoTeam.filter(member=>!byName.has(normalizedPersonName(member.name)));
+  return {merged:[...current,...missing],missing};
+}
+
 export async function listTeam(): Promise<TeamMember[]> {
   if (firebaseConfigured && db) {
     try {
       await ensureFirebaseUser();
       const snap = await getDocs(collection(db, 'team'));
-      const data = snap.docs.map(d => d.data() as TeamMember);
-      saveLocal(KEYS.team, data);
-      return data;
+      const current = snap.docs.map(d => d.data() as TeamMember);
+      const {merged,missing}=mergeDefaultTeam(current);
+      if(missing.length){
+        await Promise.all(missing.map(member=>setDoc(doc(db!,'team',member.id),cleanForFirestore(member))));
+      }
+      saveLocal(KEYS.team, merged);
+      return merged;
     } catch {}
   }
-  return loadLocal(KEYS.team, demoTeam);
+  const current=loadLocal<TeamMember[]>(KEYS.team,demoTeam);
+  const {merged}=mergeDefaultTeam(current);
+  saveLocal(KEYS.team,merged);
+  return merged;
 }
 
 export async function saveTeamMember(member: TeamMember) {
@@ -350,5 +367,5 @@ export async function saveUserProfile(profile:UserProfile){if(firebaseConfigured
 
 export async function getBackupSnapshot(){
   const [samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles(),listRuptureImports()]);
-  return {generatedAt:new Date().toISOString(),version:'0.8.0',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
+  return {generatedAt:new Date().toISOString(),version:'0.8.1',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
 }

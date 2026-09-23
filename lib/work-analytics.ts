@@ -1,12 +1,13 @@
 import { Sample, Work } from './types';
 import { extractLots, normalizeLot } from './villa-arauco';
 
+// Visões gerenciais e mapas consolidam Paredes + Lajes em uma única etapa.
+// O processo operacional continua separado nas fichas (PAREDES / LAJE),
+// preservando slump, MPa e plano de CPs específicos de cada processo.
 export const ELEMENT_GROUPS = [
   'RADIER',
-  'PAREDES',
-  'LAJES',
-  'OITÕES E PLATIBANDAS',
   'PAREDES E LAJES',
+  'OITÕES E PLATIBANDAS',
   'MURO DE ARRIMO',
 ] as const;
 
@@ -14,9 +15,7 @@ export function normalizeElementGroup(value?: string): string {
   const v = String(value || '').trim().toUpperCase();
   if (!v) return 'OUTROS';
   if (v.includes('RADIER')) return 'RADIER';
-  if (v.includes('PAREDES E LAJES') || v.includes('PAREDE/LAJE')) return 'PAREDES E LAJES';
-  if (v.includes('PAREDE')) return 'PAREDES';
-  if (v.includes('LAJE')) return 'LAJES';
+  if (v.includes('PAREDE') || v.includes('LAJE')) return 'PAREDES E LAJES';
   if (v.includes('OIT') || v.includes('PLATIBANDA')) return 'OITÕES E PLATIBANDAS';
   if (v.includes('MURO')) return 'MURO DE ARRIMO';
   return v;
@@ -75,19 +74,33 @@ export interface WorkProgressItem {
   percent?: number;
 }
 
+function consolidatedTarget(work: Work | undefined, element: string): number | undefined {
+  if (!work) return undefined;
+  if (element === 'PAREDES E LAJES') {
+    const explicit = work.plannedElements?.['PAREDES E LAJES'];
+    if (explicit && explicit > 0) return explicit;
+    // Compatibilidade com cadastros criados quando Paredes e Lajes eram metas separadas.
+    const paredes = work.plannedElements?.['PAREDES'];
+    const lajes = work.plannedElements?.['LAJES'];
+    if (paredes && lajes) return Math.max(paredes, lajes);
+    if (paredes || lajes) return paredes || lajes;
+    return work.plannedUnits;
+  }
+  const explicit = work.plannedElements?.[element];
+  if (explicit && explicit > 0) return explicit;
+  if (['RADIER','OITÕES E PLATIBANDAS'].includes(element)) return work.plannedUnits;
+  return undefined;
+}
+
 export function elementProgress(samples: Sample[], work?: Work): WorkProgressItem[] {
   const present = new Set(samples.map(s => normalizeElementGroup(s.element)));
-  const configured = Object.keys(work?.plannedElements || {});
+  const configured = Object.keys(work?.plannedElements || {}).map(normalizeElementGroup);
   const all = Array.from(new Set([...ELEMENT_GROUPS, ...configured, ...Array.from(present)]))
     .filter(x => x !== 'OUTROS');
 
   return all.map(element => {
     const completed = uniqueConcreteUnits(samples, element);
-    const explicitTarget = work?.plannedElements?.[element];
-    const fallbackTarget = ['RADIER','PAREDES','LAJES','PAREDES E LAJES','OITÕES E PLATIBANDAS'].includes(element)
-      ? work?.plannedUnits
-      : undefined;
-    const target = explicitTarget && explicitTarget > 0 ? explicitTarget : fallbackTarget;
+    const target = consolidatedTarget(work, element);
     return {
       element,
       completed,
@@ -106,9 +119,7 @@ export function overallProgress(samples: Sample[], work?: Work): number | undefi
 }
 
 export function formatElementLabel(element: string): string {
-  if (element === 'PAREDES') return 'Paredes';
-  if (element === 'LAJES') return 'Lajes';
-  if (element === 'PAREDES E LAJES') return 'Paredes / Lajes (histórico)';
+  if (element === 'PAREDES' || element === 'LAJES' || element === 'PAREDES E LAJES') return 'Paredes / Lajes';
   if (element === 'OITÕES E PLATIBANDAS') return 'Oitões / Platibandas';
   if (element === 'MURO DE ARRIMO') return 'Muros';
   if (element === 'RADIER') return 'Radier';

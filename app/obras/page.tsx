@@ -22,7 +22,7 @@ import { ageSpecToDays, makeId, parseAgeSpecToken } from '@/lib/utils';
 
 const blank={
   id:'',number:'',name:'',client:'',contractor:'',location:'',operationalStartDate:'',plannedUnits:'',plannedVolumeM3:'',
-  radier:'',paredes:'',lajes:'',oitaoes:'',muros:'',mapMode:'grid' as WorkMapMode,clientPortalEnabled:true,
+  radier:'',paredesLajes:'',oitaoes:'',muros:'',mapMode:'grid' as WorkMapMode,clientPortalEnabled:true,
   processMode:'generic' as 'villa_arauco'|'generic',
   defaultAges:'7d,14d,28d',defaultStrengthMpa:'',controlAgeDays:'28',reserveAgeDays:'63',
   reserveReleaseThresholdPct:'100',reserveReleaseEnabled:true,controlEvaluationMode:'manual' as StrengthEvaluationMode,
@@ -59,8 +59,7 @@ export default function WorksPage(){
       plannedUnits:work.plannedUnits?String(work.plannedUnits):'',
       plannedVolumeM3:work.plannedVolumeM3?String(work.plannedVolumeM3):'',
       radier:work.plannedElements?.['RADIER']?String(work.plannedElements['RADIER']):'',
-      paredes:work.plannedElements?.['PAREDES']?String(work.plannedElements['PAREDES']):(work.plannedElements?.['PAREDES E LAJES']?String(work.plannedElements['PAREDES E LAJES']):''),
-      lajes:work.plannedElements?.['LAJES']?String(work.plannedElements['LAJES']):(work.plannedElements?.['PAREDES E LAJES']?String(work.plannedElements['PAREDES E LAJES']):''),
+      paredesLajes:work.plannedElements?.['PAREDES E LAJES']?String(work.plannedElements['PAREDES E LAJES']):String(Math.max(work.plannedElements?.['PAREDES']||0,work.plannedElements?.['LAJES']||0)||''),
       oitaoes:work.plannedElements?.['OITÕES E PLATIBANDAS']?String(work.plannedElements['OITÕES E PLATIBANDAS']):'',
       muros:work.plannedElements?.['MURO DE ARRIMO']?String(work.plannedElements['MURO DE ARRIMO']):'',
       mapMode:work.mapMode||(villa?'villa_arauco':'grid'),
@@ -125,7 +124,7 @@ export default function WorksPage(){
     try{
       const plannedElements:Record<string,number>={};
       const values:[string,string][]=[
-        ['RADIER',form.radier],['PAREDES',form.paredes],['LAJES',form.lajes],
+        ['RADIER',form.radier],['PAREDES E LAJES',form.paredesLajes],
         ['OITÕES E PLATIBANDAS',form.oitaoes],['MURO DE ARRIMO',form.muros]
       ];
       values.forEach(([key,value])=>{const valueN=Number(value);if(valueN>0)plannedElements[key]=valueN});
@@ -221,8 +220,7 @@ export default function WorksPage(){
         <h3 className="form-section-title">Metas por elemento</h3>
         <div className="form-grid compact">
           <label>Radier<input type="number" min="0" value={form.radier} onChange={e=>setForm({...form,radier:e.target.value})}/></label>
-          <label>Paredes<input type="number" min="0" value={form.paredes} onChange={e=>setForm({...form,paredes:e.target.value})}/></label>
-          <label>Lajes<input type="number" min="0" value={form.lajes} onChange={e=>setForm({...form,lajes:e.target.value})}/></label>
+          <label>Paredes / Lajes<input type="number" min="0" value={form.paredesLajes} onChange={e=>setForm({...form,paredesLajes:e.target.value})}/><small>Meta gerencial consolidada. As fichas continuam separando Paredes e Lajes para slump, MPa e CPs.</small></label>
           <label>Oitões / Platibandas<input type="number" min="0" value={form.oitaoes} onChange={e=>setForm({...form,oitaoes:e.target.value})}/></label>
           <label>Muros<input type="number" min="0" value={form.muros} onChange={e=>setForm({...form,muros:e.target.value})}/></label>
         </div>

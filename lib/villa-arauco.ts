@@ -4,10 +4,8 @@ export const VILLA_ARAUCO_BLOCKS = [
 
 export const VILLA_ARAUCO_ELEMENTS = [
   'RADIER',
-  'PAREDES',
-  'LAJES',
-  'OITÕES E PLATIBANDAS',
   'PAREDES E LAJES',
+  'OITÕES E PLATIBANDAS',
   'MURO DE ARRIMO',
 ] as const;
 

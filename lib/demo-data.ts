@@ -10,8 +10,13 @@ export const demoWorks: Work[] = [
 
 export const demoTeam: TeamMember[] = [
   { id: 'lucas', name: 'Lucas', role: 'Laboratorista', active: true },
+  { id: 'fabiano', name: 'Fabiano', role: 'Laboratorista', active: true },
+  { id: 'ederson', name: 'Ederson', role: 'Laboratorista', active: true },
+  { id: 'rafael', name: 'Rafael', role: 'Laboratorista', active: true },
   { id: 'eduardo', name: 'Eduardo', role: 'Laboratorista', active: true },
-  { id: 'fabiano', name: 'Fabiano', role: 'Laboratorista', active: true }
+  { id: 'ismael', name: 'Ismael', role: 'Laboratorista', active: true },
+  { id: 'leonardo', name: 'Leonardo', role: 'Laboratorista', active: true },
+  { id: 'bruno', name: 'Bruno', role: 'Laboratorista', active: true },
 ];
 
 export const demoSamples: Sample[] = [

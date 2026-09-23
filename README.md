@@ -1,207 +1,84 @@
-# Solocontrol Lab v0.8.0 — Base histórica consolidada + início operacional em 28/09/2026
+# Solocontrol Lab v0.8.1
 
-Esta é a versão consolidada para colocar a Villa Arauco em operação diária no Solocontrol Lab a partir de **28/09/2026**.
+Versão corretiva baseada na v0.8.0.
 
-A v0.8.0 contém todas as funções anteriores e incorpora a planilha final enviada em 23/09/2026:
+## Correções principais
 
-`344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS(1).xlsx`
+### Progresso Paredes / Lajes consolidado
 
-## Objetivo da versão
+As visões gerenciais não exibem mais três cartões separados para:
 
-Separar claramente dois períodos:
+- Paredes;
+- Lajes;
+- Paredes / Lajes (histórico).
 
-- **Histórico anterior a 28/09/2026**: permanece integralmente rastreável, mas não gera tarefas, atrasos ou pendências operacionais retroativas.
-- **Operação a partir de 28/09/2026**: fichas novas passam a alimentar agenda, delegação, alertas, rompimentos, tanque, relatórios e indicadores em tempo real.
+Agora Dashboard, Portal do Cliente e Mapa trabalham com uma única etapa gerencial:
 
-Nenhum resultado ausente na fonte histórica é inventado. Quando a planilha não possui determinado resultado, o sistema mostra **“sem dado na fonte / histórico encerrado”** e preserva a ausência como parte da rastreabilidade.
+`Paredes / Lajes`
 
-## Base final de rupturas incorporada
+Os registros históricos `PAREDES E LAJES` e os novos registros operacionais `PAREDES` ou `LAJE` alimentam a mesma etapa de progresso.
 
-O pacote contém:
+Isso elimina duplicidade sem perder a rastreabilidade operacional. Nas fichas novas, Paredes e Lajes continuam separados internamente porque possuem parâmetros próprios de slump, MPa, liberação de forma e plano de CPs.
 
-`public/data/villa-arauco-rupturas-final-2026-09-23.json`
+### Dossiê Técnico do Lote
 
-Resumo da planilha recebida:
+Foram consolidados os agrupamentos no:
 
-- 2 abas;
-- 1.323 linhas reconhecidas;
-- período informado na fonte: 03/02/2026 a 17/06/2026;
-- MPa de projeto;
-- resultados de 7 dias;
-- resultados de 28 dias;
-- informações de 63 dias;
-- AP/RP;
-- observações;
-- menções a descarte de CPs de 63 dias;
-- ocorrências históricas/NC descritas na própria fonte.
-
-SHA-256 da planilha utilizada:
-
-`0a4dd8bc4acb0fc61ca7230c1353f50d7bd45db76605c5cb718d66572410489f`
-
-## Migração automática da base histórica
-
-Na primeira abertura interna após o deploy, o sistema executa uma migração única e idempotente:
-
-1. carrega os registros históricos existentes da Villa Arauco no Firebase;
-2. cruza a base final de rupturas com as fichas existentes quando há vínculo seguro;
-3. atualiza MPa de projeto, resultados e observações encontrados na fonte;
-4. preserva todas as 1.323 linhas da planilha no Arquivo Histórico de Rupturas;
-5. registros que não podem ser vinculados com segurança a Quadra/Lote ficam arquivados sem vínculo espacial — não são descartados nem inventados;
-6. todas as fichas anteriores a 28/09/2026 são retiradas da fila operacional;
-7. salva um marcador de migração para não repetir a operação em cada acesso.
-
-## “Sem pendência” significa operação limpa, não dados inventados
-
-O histórico anterior pode conter:
-
-- idade sem resultado na fonte;
-- observação de NC antiga;
-- “sem controle” na planilha antiga;
-- CP de 63 dias descartado;
-- CP de 63 dias já rompido.
-
-Essas informações continuam registradas e consultáveis. Porém, não aparecem como tarefa ativa a partir do corte operacional.
-
-Uma ruptura antiga sem resultado passa a aparecer como:
-
-`Histórico encerrado — resultado não disponível na fonte consolidada`
-
-Ela não aparece como “atrasada” e não cria atividade para a equipe.
-
-## Data de início da operação diária
-
-A Villa Arauco recebe:
-
-`Início da operação diária no sistema: 28/09/2026`
-
-A partir dessa data, o fluxo normal passa a valer integralmente:
-
-- coleta/amostragem;
-- ficha física;
-- lançamento digital;
-- slump;
-- identificação da utilização do concreto;
-- CPs individualizados;
-- programação de 12 h / 19 h / 24 h / 7 d / 28 d / 63 d conforme processo;
-- delegação;
-- fotos;
-- cargas;
-- resultados em MPa;
+- Resumo;
+- mapa por elemento;
+- tabela-resumo do lote;
 - análise técnica;
-- tanque;
-- descarte rastreado;
-- relatório diário;
-- mapa;
 - Portal do Cliente.
 
-## Coleta em um dia e digitação depois
+A tabela detalhada de concretagens continua mostrando o processo real da ficha quando ele estiver disponível, preservando a informação técnica.
 
-A ficha possui campos separados para:
+### Metas da obra
 
-- **Data da coleta / amostragem**;
-- Horário da coleta;
-- Data/hora da moldagem;
-- Data/hora de criação do registro no sistema.
+Em `Obras`, a meta gerencial agora é cadastrada como:
 
-Exemplo:
+`Paredes / Lajes`
 
-- concretagem e coleta no sábado: 26/09;
-- ficha digitada na segunda: 28/09.
+em vez de duas metas concorrentes.
 
-O sistema usa **26/09** como data da atividade da obra e preserva **28/09** como data de lançamento/auditoria.
+Cadastros antigos que já tenham `PAREDES`, `LAJES` ou `PAREDES E LAJES` continuam compatíveis e são consolidados automaticamente.
 
-## Histórico de rupturas completo
+## Equipe padrão cadastrada
 
-Em `Importar / Exportar` existe uma tabela pesquisável com todas as linhas da fonte final.
+A versão inclui os laboratoristas:
 
-Pode-se pesquisar por:
+- Lucas
+- Fabiano
+- Ederson
+- Rafael
+- Eduardo
+- Ismael
+- Leonardo
+- Bruno
 
-- identificação;
-- data;
-- concreteira;
-- NF;
-- AP/RP;
-- observação.
+Ao abrir o sistema, `listTeam()` confere a coleção `team` do Firebase. Os nomes que ainda não existirem são cadastrados automaticamente, sem duplicar colaboradores já presentes.
 
-Assim, mesmo uma linha que não possua vínculo seguro com Quadra/Lote continua disponível no sistema.
+Todos entram inicialmente como:
 
-## Dashboard e Central do Coordenador
+`Laboratorista • Ativo`
 
-Registros históricos arquivados deixam de entrar em:
+A matriz de treinamento permanece disponível em `Equipe` para você definir as competências de cada um.
 
-- sino de alertas;
-- agenda de rompimentos;
-- atrasados;
-- Central do Coordenador;
-- carga de equipe;
-- Gestão do Tanque;
-- pendências executivas.
+## Compatibilidade
 
-Os indicadores de volume, progresso e rastreabilidade histórica continuam utilizando a base anterior.
+A v0.8.1 preserva:
 
-## Dossiê Técnico do Lote
-
-O mapa continua permitindo abrir um dossiê completo por Quadra/Lote:
-
-- resumo;
-- concretagens;
-- cargas e rompimentos;
-- evolução da cura;
-- análise técnica.
-
-Para o histórico consolidado, resultados ausentes aparecem como **“sem dado na fonte”**, nunca como pendência operacional.
-
-## PDF / WhatsApp
-
-O relatório técnico do lote pode ser:
-
-- gerado em PDF;
-- baixado;
-- compartilhado pelo menu nativo em dispositivos compatíveis;
-- encaminhado pelo WhatsApp/WhatsApp Web.
-
-O PDF inclui rastreabilidade, resultados, gráfico de evolução e análise de apoio.
-
-## Portal do Cliente
-
-A versão externa mantém:
-
-- Dashboard profissional;
-- progresso da obra;
-- volume;
-- ensaios;
+- os 951 registros de concretagem;
+- a base histórica consolidada;
+- resultados de ruptura;
 - mapa;
-- relatório técnico por lote;
-- gráfico da cura;
-- PDF de acompanhamento.
+- PDF/WhatsApp;
+- Gestão do Tanque;
+- operação diária a partir de 28/09/2026;
+- Portal do Cliente;
+- auditoria e demais módulos.
 
-Dados internos como gestão do tanque, descarte, auditoria e decisões operacionais permanecem restritos à Solocontrol.
+Não é necessário apagar ou reimportar o histórico para corrigir a duplicidade visual.
 
-## Parâmetros técnicos da Villa Arauco
+## Publicação
 
-A planilha final informa **25 MPa** como referência de projeto nas linhas reconhecidas, portanto o sistema pode utilizar 25 MPa como referência histórica/padrão inicial da obra.
-
-Os critérios específicos de baixa idade/liberação de formas e a regra de avaliação do par de CPs devem continuar configurados conforme os documentos oficiais da obra e não são inferidos pela planilha.
-
-## Firebase e segurança
-
-Durante esta etapa de validação, mantenha as regras atuais do piloto.
-
-Não publique ainda:
-
-- `firestore.production.rules`
-- `storage.production.rules`
-
-até que os usuários nominais/perfis tenham sido validados.
-
-## Validação local do código
-
-Foi executada uma checagem interna de tipos com stubs das dependências externas e uma transpilação sintática de todos os arquivos TypeScript/TSX.
-
-Resultado da transpilação:
-
-- 44 arquivos TS/TSX;
-- 0 erros de sintaxe.
-
-O `npm install` local não concluiu dentro do limite do ambiente, portanto o build completo com as dependências reais Next/Firebase/jsPDF deve ser confirmado pelo Vercel no deploy.
+Suba somente a v0.8.1. Leia `INSTRUCOES-ATUALIZACAO-v0.8.1.md`.
