@@ -3,11 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   BarChart3,
   Building2,
   Camera,
   CheckCircle2,
-  ChevronRight,
   FileCheck2,
   FileDown,
   FileText,
@@ -119,6 +119,7 @@ export default function ClientPortal(){
   const traceabilityPercent=data.length?Math.min(100,(controlled/data.length)*100):100;
   const plannedUnits=work?.plannedUnits||0;
   const unitPercent=plannedUnits?Math.min(100,(controlledUnits/plannedUnits)*100):(overall||0);
+  const kpiProgress=Math.max(unitPercent||0,overall||0);
 
   const productionSeries=useMemo(()=>{
     const groups=new Map<string,{volume:number,units:Set<string>}>();
@@ -169,10 +170,10 @@ export default function ClientPortal(){
       ...sample.ruptures.flatMap(rupture=>rupture.photos.map(photo=>({url:photo.url,label:`${ruptureAgeLabel(rupture)} • ${photo.name}`,sample}))),
     ]).filter(item=>Boolean(item.url));
     const seen=new Set<string>();
-    return all.filter(item=>!seen.has(item.url)&&seen.add(item.url)).slice(0,5);
+    return all.filter(item=>!seen.has(item.url)&&seen.add(item.url)).slice(0,6);
   },[data]);
 
-  const recent=useMemo(()=>[...data].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).slice(0,6),[data]);
+  const recent=useMemo(()=>[...data].sort((a,b)=>sampleCollectionDate(b).localeCompare(sampleCollectionDate(a))).slice(0,8),[data]);
 
   const blocks=useMemo(
     ()=>work?.mapMode==='villa_arauco'
@@ -203,6 +204,27 @@ export default function ClientPortal(){
     return all.filter(item=>item.url&&!seen.has(item.url)&&seen.add(item.url)).slice(0,8);
   },[selectedLotRecords]);
 
+  const topElements=useMemo(()=>progress.filter(item=>item.completed>0).slice(0,4),[progress]);
+  const topLots=useMemo(()=>{
+    const groups=new Map<string,{count:number,volume:number}>();
+    data.forEach(sample=>{
+      const block=normalizeBlock(sample.block);
+      const lots=extractLots(sample.lot);
+      if(!block||!lots.length)return;
+      lots.forEach(lot=>{
+        const key=`${block}-${lot}`;
+        const current=groups.get(key)||{count:0,volume:0};
+        current.count+=1;
+        current.volume+=sampleVolume(sample);
+        groups.set(key,current);
+      });
+    });
+    return Array.from(groups.entries())
+      .map(([key,value])=>({key,block:key.split('-')[0],lot:key.split('-')[1],...value}))
+      .sort((a,b)=>b.count-a.count||b.volume-a.volume)
+      .slice(0,5);
+  },[data]);
+
   function publicStatus(){
     if(!lotSummary)return{label:'Aguardando dados',tone:'pendente'};
     if(lotSummary.tone==='danger')return{label:'Em análise técnica',tone:'pendente'};
@@ -210,6 +232,10 @@ export default function ClientPortal(){
     return{label:'Acompanhamento em andamento',tone:'em_execucao'};
   }
   const lotStatus=publicStatus();
+
+  const workStatus=pending===0
+    ?{label:'Operação estável',detail:'Sem pendências críticas em aberto.',tone:'good'}
+    :{label:'Acompanhamento ativo',detail:`${pending} item(ns) exigem atenção/continuidade de cadastro.`,tone:'warn'};
 
   async function clientPdf(){
     if(!selectedLot||!work||!selectedLotRecords.length)return;
@@ -227,127 +253,212 @@ export default function ClientPortal(){
     finally{setReportBusy('')}
   }
 
-  if(isPilot)return <main className="client-portal client-portal-v2">
+  if(isPilot)return <main className="client-portal-v3">
     <section className="client-empty"><Image src="/logo-solocontrol.png" width={220} height={110} alt="Solocontrol"/><LockKeyhole size={44}/><h1>Login necessário</h1><p>Dados reais da obra não são exibidos no modo anônimo. Entre com uma conta de cliente autorizada.</p><Link href="/login" className="button primary">Entrar no portal</Link></section>
   </main>;
 
-  return <main className="client-portal-v2">
-    <aside className="client-sidebar-v2">
-      <div className="client-brand-v2">
-        <Image src="/logo-solocontrol.png" width={185} height={92} alt="Solocontrol" priority/>
+  return <main className="client-portal-v3">
+    <aside className="client-sidebar-v3">
+      <div className="client-brand-v3">
+        <Image src="/logo-solocontrol.png" width={188} height={92} alt="Solocontrol" priority/>
         <span>Portal do Cliente</span>
       </div>
       <nav>
         <a href="#visao-geral"><Home size={18}/>Visão Geral</a>
         <a href="#mapa"><MapPinned size={18}/>Mapa da Obra</a>
+        <a href="#status"><ShieldCheck size={18}/>Status da Qualidade</a>
         <a href="#concretagens"><FlaskConical size={18}/>Concretagens</a>
         <a href="#resultados"><BarChart3 size={18}/>Resultados</a>
+        <a href="#fotos"><ImageIcon size={18}/>Evidências</a>
         <a href="#relatorios"><FileText size={18}/>Relatórios</a>
-        <a href="#fotos"><ImageIcon size={18}/>Galeria de Fotos</a>
-        <a href="#documentos"><FolderOpen size={18}/>Documentos</a>
         <a href="#sobre"><HelpCircle size={18}/>Sobre a Solocontrol</a>
       </nav>
-      <div className="client-sidebar-quote"><ShieldCheck size={28}/><b>Qualidade hoje.<br/>Construindo o amanhã.</b></div>
-      <div className="client-sidebar-account"><span>Acesso</span><b>{profile.name}</b><Link href="/login">Minha conta</Link></div>
+      <div className="client-sidebar-seal-v3"><ShieldCheck size={28}/><b>Qualidade hoje.<br/>Construindo o amanhã.</b><span>Rastreabilidade, tecnologia e transparência para a diretoria e para o cliente.</span></div>
+      <div className="client-sidebar-account-v3"><span>Acesso liberado para</span><b>{profile.name}</b><Link href="/login">Minha conta</Link></div>
     </aside>
 
-    <div className="client-main-v2">
+    <div className="client-main-v3">
       {!work?<section className="client-empty"><Building2 size={44}/><h1>Nenhuma obra liberada</h1><p>Solicite à Solocontrol a liberação do acesso para a obra.</p></section>:<>
-        <section id="visao-geral" className="client-hero-v2">
-          <div className="client-hero-v2-copy">
-            <span>PORTAL DE ACOMPANHAMENTO TECNOLÓGICO</span>
-            <div className="client-hero-title-row"><h1>{work.name}</h1><b>Obra em andamento</b></div>
-            <p><strong>Cliente:</strong> {work.client} <i/> <strong>Executora:</strong> {work.contractor||'—'}</p>
-            <small>Controle tecnológico: Solocontrol Engenharia e Consultoria</small>
-            <blockquote>“Qualidade, segurança e rastreabilidade em todas as etapas da sua obra.”</blockquote>
+        <header id="visao-geral" className="client-topbar-v3">
+          <div>
+            <span>PORTAL EXECUTIVO DO CLIENTE</span>
+            <h1>{work.name}</h1>
+            <p>{work.client} • acompanhamento tecnológico em tempo real</p>
           </div>
-          <div className="client-hero-v2-side">
-            <label>Obra<select value={workId} onChange={e=>{setWorkId(e.target.value);setSelectedLot(null)}}>{works.map(w=><option value={w.id} key={w.id}>{w.name}</option>)}</select></label>
-            <div className="client-last-update"><span>Última atualização</span><b>{latest?new Date(latest).toLocaleDateString('pt-BR'):'—'}</b><strong>{latest?new Date(latest).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</strong></div>
-            <p>Mais que números,<br/><b>construímos confiança.</b></p>
+          <div className="client-topbar-controls-v3">
+            <label>
+              <span>Obra</span>
+              <select value={workId} onChange={e=>{setWorkId(e.target.value);setSelectedLot(null)}}>
+                {works.map(w=><option value={w.id} key={w.id}>{w.name}</option>)}
+              </select>
+            </label>
+            <div className={`client-health-pill-v3 ${workStatus.tone}`}>
+              {workStatus.tone==='good'?<CheckCircle2 size={16}/>:<AlertTriangle size={16}/>} {workStatus.label}
+            </div>
+          </div>
+        </header>
+
+        <section className="client-hero-v3">
+          <div className="client-hero-copy-v3">
+            <div className="client-hero-badge-row-v3">
+              <span>CONTROLE TECNOLÓGICO</span>
+              <strong>Solocontrol Engenharia e Consultoria</strong>
+            </div>
+            <h2>Painel sofisticado, claro e objetivo para a diretoria acompanhar a obra com confiança.</h2>
+            <p>
+              O portal consolida volume de concreto, ensaios executados, rastreabilidade, mapa interativo, evolução da obra,
+              dossiê técnico por lote e evidências fotográficas — tudo em um único ambiente.
+            </p>
+            <div className="client-hero-highlights-v3">
+              <div><span>Status operacional</span><b>{workStatus.detail}</b></div>
+              <div><span>Última atualização</span><b>{latest?`${new Date(latest).toLocaleDateString('pt-BR')} às ${new Date(latest).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`:'Sem atualização recente'}</b></div>
+            </div>
+          </div>
+          <div className="client-hero-aside-v3">
+            <div className="hero-mini-card"><span>Cliente</span><b>{work.client||'—'}</b></div>
+            <div className="hero-mini-card"><span>Executora</span><b>{work.contractor||'—'}</b></div>
+            <div className="hero-mini-card"><span>Progresso global</span><b>{kpiProgress.toFixed(1)}%</b></div>
+            <div className="hero-mini-card"><span>Rastreabilidade</span><b>{traceabilityPercent.toFixed(0)}%</b></div>
           </div>
         </section>
 
-        <section className="client-kpi-grid-v2">
-          <div><Home/><span>Unidades previstas</span><strong>{plannedUnits||'—'}</strong><small>Total da obra</small></div>
-          <div><CheckCircle2/><span>Unidades com controle</span><strong>{controlledUnits}</strong><small>{unitPercent.toFixed(1)}% do total</small></div>
-          <div><PackageCheck/><span>Volume de concreto</span><strong>{formatNumber(volume)} m³</strong><small>controlado</small></div>
-          <div><FlaskConical/><span>Ensaios realizados</span><strong>{tests.toLocaleString('pt-BR')}</strong><small>resultados registrados</small></div>
-          <div><FileCheck2/><span>Laudos registrados</span><strong>{reports}</strong><small>referências únicas</small></div>
-          <div><ShieldCheck/><span>Rastreabilidade</span><strong>{traceabilityPercent.toFixed(0)}%</strong><small>dos registros</small></div>
+        <section className="client-kpi-grid-v3">
+          <article><Home/><span>Unidades previstas</span><strong>{plannedUnits||'—'}</strong><small>escopo cadastrado</small></article>
+          <article><CheckCircle2/><span>Unidades com controle</span><strong>{controlledUnits}</strong><small>{unitPercent.toFixed(1)}% do total</small></article>
+          <article><PackageCheck/><span>Volume de concreto</span><strong>{formatNumber(volume)} m³</strong><small>acumulado controlado</small></article>
+          <article><FlaskConical/><span>Ensaios concluídos</span><strong>{tests.toLocaleString('pt-BR')}</strong><small>rupturas/resultados</small></article>
+          <article><FileCheck2/><span>Laudos / referências</span><strong>{reports}</strong><small>documentos vinculados</small></article>
+          <article><ShieldCheck/><span>Rastreabilidade</span><strong>{traceabilityPercent.toFixed(0)}%</strong><small>dos registros cadastrados</small></article>
         </section>
 
-        <section className="client-dashboard-v2">
-          <article className="client-card-v2 client-evolution-v2" id="resultados">
-            <div className="client-card-title-v2"><div><span>EVOLUÇÃO DA OBRA</span><h2>Unidades com processo controlado</h2></div><div className="client-chart-legend"><i className="planned"/>Previsto <i className="realized"/>Realizado</div></div>
-            <div className="client-bars-v2">
-              {productionSeries.map(item=><div key={item.key}><div className="client-bar-track-v2"><span style={{height:`${(item.units/productionMax)*100}%`}}/></div><b>{item.label}</b><small>{item.units} un.</small></div>)}
-              {!productionSeries.length&&<div className="client-empty-mini">Sem produção mensal suficiente.</div>}
+        <section className="client-overview-grid-v3">
+          <article id="mapa" className="client-card-v3 client-map-panel-v3">
+            <div className="client-section-head-v3">
+              <div><span>MAPA INTERATIVO DA OBRA</span><h3>Quadras e lotes com status visual</h3></div>
+              <div className="client-map-filter-v3">
+                {['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS','MURO DE ARRIMO'].map(e=><button key={e} className={element===e?'active':''} onClick={()=>setElement(e)}>{formatElementLabel(e)}</button>)}
+              </div>
+            </div>
+            <div className="client-map-legend-v3">
+              <span><i className="done"/>Concluído</span>
+              <span><i className="partial"/>Em acompanhamento</span>
+              <span><i className="waiting"/>Sem dados do elemento</span>
+              <span><i className="empty"/>Ainda sem registro</span>
+            </div>
+            {work.mapImage&&<div className="client-plan-v3"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
+            <div className="client-map-scroll-v3">
+              <div className="blocks-grid client-blocks-v3">
+                {blocks.slice(0,30).map(block=><div className="block-card-v3" key={block}>
+                  <div className="block-title-v3"><MapPinned size={14}/>Quadra {block}</div>
+                  <div className="lots-grid-v3">
+                    {Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{
+                      const rs=records(block,lot);
+                      const someActivity=allLotRecords(block,lot).length>0;
+                      const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');
+                      const tone=rs.length?(bad?'partial':'done'):(someActivity?'waiting':'empty');
+                      return <button type="button" onClick={()=>setSelectedLot({block,lot})} className={`lot-tile-v3 ${tone}`} key={lot}>{lot}</button>;
+                    })}
+                  </div>
+                </div>)}
+              </div>
+            </div>
+            <div className="client-map-footer-v3">
+              <div><b>Exploração técnica por lote</b><span>Clique em qualquer lote para abrir o dossiê técnico com concretagens, resultados, gráfico de cura, fotos e PDF.</span></div>
+              <button className="button primary" onClick={()=>topLots[0]&&setSelectedLot({block:topLots[0].block,lot:topLots[0].lot})}>Abrir dossiê em destaque</button>
             </div>
           </article>
 
-          <article className="client-card-v2 client-distribution-v2">
-            <div className="client-card-title-v2"><div><span>DISTRIBUIÇÃO DO VOLUME</span><h2>Por elemento construtivo</h2></div></div>
-            <div className="client-distribution-layout-v2">
-              <div className="client-donut-v2" style={{background:volumeDonut}}><div><b>{formatNumber(volume)}</b><span>m³ total</span></div></div>
-              <div className="client-volume-legend-v2">{volumeDistribution.map(item=><div key={item.element}><span><i style={{background:item.color}}/>{item.label}</span><b>{formatNumber(item.value)} m³ ({item.percent.toFixed(1)}%)</b></div>)}</div>
+          <aside className="client-side-stack-v3">
+            <article id="status" className="client-card-v3">
+              <div className="client-section-head-v3 compact">
+                <div><span>SALA DE CONTROLE</span><h3>Status da qualidade</h3></div>
+              </div>
+              <div className="quality-badge-v3">
+                <div className={`quality-dot-v3 ${workStatus.tone}`}>{workStatus.tone==='good'?<CheckCircle2 size={24}/>:<AlertTriangle size={24}/>}</div>
+                <div><b>{workStatus.label}</b><span>{workStatus.detail}</span></div>
+              </div>
+              <div className="quality-list-v3">
+                <div><span>Pendências em aberto</span><b>{pending}</b></div>
+                <div><span>Registros controlados</span><b>{controlled}</b></div>
+                <div><span>Ensaios cadastrados</span><b>{tests}</b></div>
+                <div><span>Volume total</span><b>{formatNumber(volume)} m³</b></div>
+              </div>
+            </article>
+
+            <article className="client-card-v3">
+              <div className="client-section-head-v3 compact">
+                <div><span>AVANÇO FÍSICO</span><h3>Resumo por elemento</h3></div>
+              </div>
+              <div className="progress-list-v3">
+                {progress.filter(item=>item.target||item.completed).slice(0,5).map(item=><div key={item.element}>
+                  <div className="progress-head-v3"><span>{formatElementLabel(item.element)}</span><b>{item.completed}{item.target?` / ${item.target}`:''}</b></div>
+                  <div className="progress-track-v3"><i style={{width:`${Math.min(100,item.percent||0)}%`}}/></div>
+                  <small>{item.target?`${(item.percent||0).toFixed(1)}% concluído`:'meta não configurada'}</small>
+                </div>)}
+              </div>
+            </article>
+
+            <article id="concretagens" className="client-card-v3">
+              <div className="client-section-head-v3 compact">
+                <div><span>ÚLTIMAS CONCRETAGENS</span><h3>Atividade recente</h3></div>
+              </div>
+              <div className="recent-list-v3">
+                {recent.map(s=><button type="button" key={s.id} onClick={()=>s.block&&extractLots(s.lot)[0]&&setSelectedLot({block:normalizeBlock(s.block),lot:extractLots(s.lot)[0]})}>
+                  <div>
+                    <b>{sampleProcessLabel(s)}</b>
+                    <span>{formatDate(sampleCollectionDate(s))} • {s.block?`Q${normalizeBlock(s.block)}`:'—'} {s.lot?`L${extractLots(s.lot)[0]||s.lot}`:''}</span>
+                  </div>
+                  <strong>{formatNumber(sampleVolume(s))} m³</strong>
+                </button>)}
+                {!recent.length&&<div className="empty-inline-v3">Sem registros recentes.</div>}
+              </div>
+            </article>
+          </aside>
+        </section>
+
+        <section className="client-analytics-grid-v3">
+          <article id="resultados" className="client-card-v3">
+            <div className="client-section-head-v3"><div><span>EVOLUÇÃO DA OBRA</span><h3>Unidades controladas por período</h3></div></div>
+            <div className="client-bars-v3">
+              {productionSeries.map(item=><div key={item.key}><div className="client-bar-track-v3"><span style={{height:`${(item.units/productionMax)*100}%`}}/></div><b>{item.label}</b><small>{item.units} un.</small></div>)}
+              {!productionSeries.length&&<div className="empty-inline-v3">Sem produção mensal suficiente.</div>}
             </div>
           </article>
 
-          <article className="client-card-v2 client-quality-v2">
-            <div className="client-card-title-v2"><div><span>QUALIDADE E CONFORMIDADE</span><h2>Indicadores de confiança</h2></div></div>
-            <div className="client-quality-list-v2">
-              <div><CheckCircle2/><span>Registros com rastreabilidade</span><b>{traceabilityPercent.toFixed(0)}%</b></div>
-              <div><CheckCircle2/><span>Ensaios registrados</span><b>{tests.toLocaleString('pt-BR')}</b></div>
-              <div className={pending?'attention':''}><ShieldCheck/><span>Pendências críticas</span><b>{pending}</b></div>
-              <div><FileCheck2/><span>Laudos/referências</span><b>{reports}</b></div>
-              <div><TrendingUp/><span>Acompanhamento técnico</span><b>Ativo</b></div>
+          <article className="client-card-v3">
+            <div className="client-section-head-v3"><div><span>DISTRIBUIÇÃO DO VOLUME</span><h3>Volume de concreto por elemento</h3></div></div>
+            <div className="client-distribution-layout-v3">
+              <div className="client-donut-v3" style={{background:volumeDonut}}><div><b>{formatNumber(volume)}</b><span>m³ total</span></div></div>
+              <div className="client-volume-legend-v3">{volumeDistribution.map(item=><div key={item.element}><span><i style={{background:item.color}}/>{item.label}</span><b>{formatNumber(item.value)} m³</b><small>{item.percent.toFixed(1)}%</small></div>)}</div>
             </div>
-            <div className="client-quality-verdict-v2"><CheckCircle2/><div><b>Obra dentro do acompanhamento tecnológico</b><span>Os dados exibidos são derivados dos registros cadastrados no sistema.</span></div></div>
-          </article>
-        </section>
-
-        <section id="mapa" className="client-map-layout-v2">
-          <article className="client-card-v2 client-map-card-v2">
-            <div className="client-card-title-v2"><div><span>MAPA DA OBRA</span><h2>Quadras e lotes</h2></div><div className="client-map-filter-v2">{['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS','MURO DE ARRIMO'].map(e=><button key={e} className={element===e?'active':''} onClick={()=>setElement(e)}>{formatElementLabel(e)}</button>)}</div></div>
-            <div className="client-map-legend-v2"><span><i className="done"/>Concluído</span><span><i className="active"/>Em andamento</span><span><i className="waiting"/>Aguardando ensaio</span><span><i className="none"/>Sem registro</span></div>
-            {work.mapImage&&<div className="client-plan-v2"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
-            <div className="blocks-grid client-blocks client-blocks-v2">{blocks.slice(0,30).map(block=><div className="block-card" key={block}><div className="block-title"><MapPinned size={14}/>Quadra {block}</div><div className="lots-grid">{Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const rs=records(block,lot);const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');return <button type="button" onClick={()=>setSelectedLot({block,lot})} className={`lot-tile ${rs.length?(bad?'partial':'done'):'empty'}`} key={lot}>{lot}</button>})}</div></div>)}</div>
           </article>
 
-          <article id="concretagens" className="client-card-v2 client-recent-v2">
-            <div className="client-card-title-v2"><div><span>ÚLTIMAS CONCRETAGENS</span><h2>Atividade recente</h2></div><a href="#mapa">Ver mapa →</a></div>
-            <div className="table-wrap"><table><thead><tr><th>Data</th><th>Quadra</th><th>Lote</th><th>Elemento</th><th>Volume</th><th>Status</th></tr></thead><tbody>{recent.map(s=><tr key={s.id}><td>{formatDate(sampleCollectionDate(s))}</td><td>{s.block?`Q${s.block}`:'—'}</td><td>{s.lot?`L${s.lot}`:'—'}</td><td>{sampleProcessLabel(s)}</td><td>{formatNumber(sampleVolume(s))} m³</td><td><span className="status concluido">Registrado</span></td></tr>)}</tbody></table></div>
-            <div className="client-map-callout-v2"><FileText/><div><b>Acesse o dossiê completo de cada lote</b><span>Relatórios, resultados, fotos e muito mais.</span></div><a href="#mapa" className="button primary">Explorar mapa</a></div>
-          </article>
-        </section>
-
-        <section className="client-field-grid-v2">
-          <article id="fotos" className="client-card-v2 client-gallery-v2">
-            <div className="client-card-title-v2"><div><span>REGISTRO EM CAMPO</span><h2>Evidências da qualidade</h2></div></div>
-            <div className="client-gallery-grid-v2">
+          <article id="fotos" className="client-card-v3 client-gallery-card-v3">
+            <div className="client-section-head-v3"><div><span>EVIDÊNCIAS DE CAMPO</span><h3>Fotos e registros recentes</h3></div></div>
+            <div className="client-gallery-grid-v3">
               {evidence.map((item,index)=><figure key={`${item.url}-${index}`}><img src={item.url} alt={item.label}/><figcaption><b>{item.label}</b><span>{item.sample.block?`Q${item.sample.block}`:''}{item.sample.lot?` • L${item.sample.lot}`:''} • {formatDate(sampleCollectionDate(item.sample))}</span></figcaption></figure>)}
-              {!evidence.length&&<div className="client-gallery-placeholder-v2"><Camera size={28}/><b>Galeria em formação</b><span>As fotos vinculadas às novas fichas aparecerão automaticamente aqui.</span></div>}
+              {!evidence.length&&<div className="client-gallery-placeholder-v3"><Camera size={28}/><b>Galeria em formação</b><span>As fotos vinculadas às novas fichas aparecerão automaticamente aqui.</span></div>}
             </div>
           </article>
 
-          <article id="relatorios" className="client-card-v2 client-docs-v2">
-            <div className="client-card-title-v2"><div><span>DOCUMENTOS E RELATÓRIOS</span><h2>Geração de relatórios técnicos</h2></div></div>
-            <div className="client-doc-list-v2">
-              <button onClick={()=>window.print()}><FileText/><span>Visão geral da obra</span><b>PDF</b></button>
-              <a href="#mapa"><FileText/><span>Relatório por quadra/lote</span><b>Mapa</b></a>
-              <a href="#concretagens"><FileText/><span>Histórico de concretagens</span><b>Dados</b></a>
-              <a href="#resultados"><FileText/><span>Resultados e evolução</span><b>Gráficos</b></a>
+          <article id="relatorios" className="client-card-v3">
+            <div className="client-section-head-v3"><div><span>RELATÓRIOS E DOCUMENTOS</span><h3>Acesso rápido da diretoria</h3></div></div>
+            <div className="client-doc-list-v3">
+              <button onClick={()=>window.print()}><FileText/><div><b>Visão geral da obra</b><span>Resumo executivo em PDF</span></div></button>
+              <a href="#mapa"><MapPinned/><div><b>Dossiê por quadra/lote</b><span>Relatórios técnicos, fotos e gráfico de cura</span></div></a>
+              <a href="mailto:contatos.solocontrol@gmail.com"><FolderOpen/><div><b>Solicitar relatório formal</b><span>Envio pela equipe Solocontrol</span></div></a>
             </div>
-            <a href="mailto:contatos.solocontrol@gmail.com" className="button primary full">Solicitar relatório personalizado</a>
+            <div className="client-strip-v3"><FileCheck2 size={18}/><span>Os dados exibidos são derivados dos registros lançados no sistema e servem como acompanhamento gerencial do cliente.</span></div>
           </article>
         </section>
 
-        <section id="documentos" className="client-document-strip-v2">
-          <ShieldCheck/><div><b>Transparência e rastreabilidade em tempo real</b><span>O portal apresenta informações de acompanhamento. Resultados formais permanecem vinculados aos relatórios técnicos aprovados e documentos aplicáveis.</span></div>
+        <section id="sobre" className="client-footer-banner-v3">
+          <ShieldCheck/>
+          <div>
+            <b>Transparência, rastreabilidade e confiança em tempo real</b>
+            <span>Portal desenvolvido para transformar dados de campo em informação clara para gestores, diretoria e cliente.</span>
+          </div>
         </section>
-
-        <footer id="sobre" className="client-footer-v2"><Image src="/logo-solocontrol-icon.png" width={40} height={40} alt="Solocontrol"/><div><b>Solocontrol Engenharia e Consultoria</b><span>Controle tecnológico para um futuro mais seguro.</span></div><small>Tecnologia aplicada à qualidade, controle e rastreabilidade.</small></footer>
       </>}
     </div>
 

@@ -1,4 +1,4 @@
-# Solocontrol Lab v0.8.3
+# Solocontrol Lab v0.8.4
 
 Versão corretiva baseada na v0.8.0.
 
@@ -65,7 +65,7 @@ A matriz de treinamento permanece disponível em `Equipe` para você definir as 
 
 ## Compatibilidade
 
-A v0.8.3 preserva:
+A v0.8.4 preserva:
 
 - os 951 registros de concretagem;
 - a base histórica consolidada;
@@ -81,16 +81,16 @@ Não é necessário apagar ou reimportar o histórico para corrigir a duplicidad
 
 ## Publicação
 
-Suba somente a v0.8.3. Leia `INSTRUCOES-ATUALIZACAO-v0.8.3.md`.
+Suba somente a v0.8.4. Leia `INSTRUCOES-ATUALIZACAO-v0.8.4.md`.
 
 
-## Atualização v0.8.3
+## Atualização v0.8.4
 - Dashboard principal redesenhado com foco executivo/diretoria.
 - Hero gerencial, KPIs com destaque visual, painel executivo de progresso, evolução da produção, distribuição por elemento, resumo gerencial, agenda do dia e equipe do laboratório.
 - Mantidas as rotinas existentes de amostras, agenda e pendências históricas.
 
 
-## Atualização v0.8.3 — Portal do Cliente
+## Atualização v0.8.4 — Portal do Cliente
 - Portal do Cliente redesenhado conforme o layout visual aprovado.
 - Menu lateral exclusivo para o cliente.
 - Hero da obra com cliente, executora e atualização.
