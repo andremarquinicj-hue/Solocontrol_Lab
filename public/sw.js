@@ -1,4 +1,4 @@
-const CACHE='solocontrol-lab-v0.8.3';
+const CACHE='solocontrol-lab-v0.8.5';
 const CORE=['/','/login','/portal-cliente','/mapa','/tanque','/historico','/logo-solocontrol.png','/logo-solocontrol-icon.png','/manifest.webmanifest','/data/villa-arauco-rupturas-final-2026-09-23.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

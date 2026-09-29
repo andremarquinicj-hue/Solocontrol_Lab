@@ -1,4 +1,4 @@
-# Solocontrol Lab v0.8.4
+# Solocontrol Lab v0.8.5
 
 Versão corretiva baseada na v0.8.0.
 
@@ -65,7 +65,7 @@ A matriz de treinamento permanece disponível em `Equipe` para você definir as 
 
 ## Compatibilidade
 
-A v0.8.4 preserva:
+A v0.8.5 preserva:
 
 - os 951 registros de concretagem;
 - a base histórica consolidada;
@@ -81,16 +81,16 @@ Não é necessário apagar ou reimportar o histórico para corrigir a duplicidad
 
 ## Publicação
 
-Suba somente a v0.8.4. Leia `INSTRUCOES-ATUALIZACAO-v0.8.4.md`.
+Suba somente a v0.8.5. Leia `INSTRUCOES-ATUALIZACAO-v0.8.5.md`.
 
 
-## Atualização v0.8.4
+## Atualização v0.8.5
 - Dashboard principal redesenhado com foco executivo/diretoria.
 - Hero gerencial, KPIs com destaque visual, painel executivo de progresso, evolução da produção, distribuição por elemento, resumo gerencial, agenda do dia e equipe do laboratório.
 - Mantidas as rotinas existentes de amostras, agenda e pendências históricas.
 
 
-## Atualização v0.8.4 — Portal do Cliente
+## Atualização v0.8.5 — Portal do Cliente
 - Portal do Cliente redesenhado conforme o layout visual aprovado.
 - Menu lateral exclusivo para o cliente.
 - Hero da obra com cliente, executora e atualização.
@@ -99,3 +99,22 @@ Suba somente a v0.8.4. Leia `INSTRUCOES-ATUALIZACAO-v0.8.4.md`.
 - Mapa interativo com acesso ao dossiê técnico por lote.
 - Últimas concretagens, galeria de evidências e central de relatórios.
 - Mantida a geração/compartilhamento do relatório técnico em PDF por lote.
+
+
+## Atualização v0.8.5 — Pictograma COPLAN 29/09/2026
+
+A versão incorpora a planilha `PICTOGRAMA COPLAN VILA ARAUCO.xlsx` como fonte separada de avanço físico da obra.
+
+### Dados consolidados da planilha
+- 620 unidades previstas;
+- Terraplenagem: 329 platos concluídos, 202 em execução e 89 não iniciados;
+- Radier: 373 concretados, 373 com gabarito e 18 muros de arrimo;
+- Parede: 362 concretagens de parede e 152 concretagens de oitão;
+- Paredes/Lajes concretadas: 309 unidades;
+- Contrapiso: 192;
+- Porcelanato: 3 na aba CONTRAPISO;
+- Revestimento iniciado: 50 no estágio 1 e 35 no estágio 2 conforme a terminologia da planilha;
+- Estrutura metálica: 50; telhado: 50; telhado de garagem: 13;
+- Verificação pós-desforma: 29.
+
+O dashboard interno e o Portal do Cliente passaram a distinguir claramente **avanço físico COPLAN** de **controle tecnológico Solocontrol**.

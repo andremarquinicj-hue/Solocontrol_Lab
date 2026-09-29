@@ -47,6 +47,7 @@ import {
 } from '@/lib/work-analytics';
 import { extractLots, normalizeBlock, VILLA_ARAUCO_BLOCKS } from '@/lib/villa-arauco';
 import { formatDate, ruptureAgeLabel } from '@/lib/utils';
+import { pictogramForWork, villaConstructionHighlights } from '@/lib/pictogram';
 
 type LotRef={block:string;lot:string};
 
@@ -120,6 +121,13 @@ export default function ClientPortal(){
   const plannedUnits=work?.plannedUnits||0;
   const unitPercent=plannedUnits?Math.min(100,(controlledUnits/plannedUnits)*100):(overall||0);
   const kpiProgress=Math.max(unitPercent||0,overall||0);
+  const pictogram=useMemo(()=>pictogramForWork(work),[work]);
+  const constructionHighlights=useMemo(()=>villaConstructionHighlights(pictogram),[pictogram]);
+  const houseConcreteTotal=pictogram?.houseConcrete.total||0;
+  const displayPlannedUnits=plannedUnits||pictogram?.totalUnits||0;
+  const houseConcretePercent=pictogram?.totalUnits?Math.min(100,(houseConcreteTotal/pictogram.totalUnits)*100):0;
+  const houseByBlock:Record<string,number>=pictogram?.houseConcrete.byBlock??{};
+  const maxHouseByBlock=Math.max(...Object.values(houseByBlock),1);
 
   const productionSeries=useMemo(()=>{
     const groups=new Map<string,{volume:number,units:Set<string>}>();
@@ -317,19 +325,39 @@ export default function ClientPortal(){
           <div className="client-hero-aside-v3">
             <div className="hero-mini-card"><span>Cliente</span><b>{work.client||'—'}</b></div>
             <div className="hero-mini-card"><span>Executora</span><b>{work.contractor||'—'}</b></div>
-            <div className="hero-mini-card"><span>Progresso global</span><b>{kpiProgress.toFixed(1)}%</b></div>
+            <div className="hero-mini-card"><span>{pictogram?'Paredes/Lajes concretadas':'Progresso global'}</span><b>{pictogram?`${houseConcretePercent.toFixed(1)}%`:`${kpiProgress.toFixed(1)}%`}</b></div>
             <div className="hero-mini-card"><span>Rastreabilidade</span><b>{traceabilityPercent.toFixed(0)}%</b></div>
           </div>
         </section>
 
         <section className="client-kpi-grid-v3">
-          <article><Home/><span>Unidades previstas</span><strong>{plannedUnits||'—'}</strong><small>escopo cadastrado</small></article>
-          <article><CheckCircle2/><span>Unidades com controle</span><strong>{controlledUnits}</strong><small>{unitPercent.toFixed(1)}% do total</small></article>
+          <article><Home/><span>Unidades previstas</span><strong>{displayPlannedUnits||'—'}</strong><small>escopo cadastrado</small></article>
+          <article><CheckCircle2/><span>Paredes / lajes concretadas</span><strong>{pictogram?houseConcreteTotal:controlledUnits}</strong><small>{pictogram?`${houseConcretePercent.toFixed(1)}% do empreendimento`:`${unitPercent.toFixed(1)}% com controle`}</small></article>
           <article><PackageCheck/><span>Volume de concreto</span><strong>{formatNumber(volume)} m³</strong><small>acumulado controlado</small></article>
           <article><FlaskConical/><span>Ensaios concluídos</span><strong>{tests.toLocaleString('pt-BR')}</strong><small>rupturas/resultados</small></article>
           <article><FileCheck2/><span>Laudos / referências</span><strong>{reports}</strong><small>documentos vinculados</small></article>
           <article><ShieldCheck/><span>Rastreabilidade</span><strong>{traceabilityPercent.toFixed(0)}%</strong><small>dos registros cadastrados</small></article>
         </section>
+
+        {pictogram&&<section className="client-construction-panel-v3">
+          <div className="client-section-head-v3">
+            <div><span>AVANÇO FÍSICO INFORMADO PELA COPLAN</span><h3>Pictograma executivo da Villa Arauco</h3><p>Base recebida em {formatDate(pictogram.receivedAt)} • {pictogram.sourceFile}</p></div>
+            <div className="client-source-badge-v3"><ShieldCheck size={16}/>620 unidades</div>
+          </div>
+          <div className="client-construction-grid-v3">
+            {constructionHighlights.map(item=><article key={item.key}>
+              <div><span>{item.label}</span><b>{item.count} / {item.total}</b></div>
+              <div className="client-construction-track-v3"><i style={{width:`${item.percent}%`}}/></div>
+              <small>{item.percent.toFixed(1)}% concluído</small>
+            </article>)}
+            <article className="featured"><div><span>Paredes e lajes concretadas</span><b>{houseConcreteTotal} / {pictogram.totalUnits}</b></div><div className="client-construction-track-v3"><i style={{width:`${houseConcretePercent}%`}}/></div><small>{houseConcretePercent.toFixed(1)}% do empreendimento</small></article>
+          </div>
+          <div className="client-block-progress-v3">
+            <div><b>Casas com paredes/lajes concretadas por quadra</b><span>Totais consolidados da aba “CASA CONCRETADA”.</span></div>
+            <div className="client-block-progress-grid-v3">{Object.entries(houseByBlock).map(([block,count])=><div key={block}><span>Q{block}</span><div><i style={{width:`${(count/maxHouseByBlock)*100}%`}}/></div><b>{count}</b></div>)}</div>
+          </div>
+          <div className="client-source-note-v3"><ShieldCheck size={18}/><span>Avanço físico da COPLAN e controle tecnológico da Solocontrol são apresentados separadamente para preservar a origem e a rastreabilidade de cada informação.</span></div>
+        </section>}
 
         <section className="client-overview-grid-v3">
           <article id="mapa" className="client-card-v3 client-map-panel-v3">

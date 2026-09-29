@@ -1,0 +1,303 @@
+{
+  "sourceFile": "PICTOGRAMA COPLAN VILA ARAUCO.xlsx",
+  "receivedAt": "2026-09-29",
+  "project": "Villa Arauco",
+  "client": "Arauco",
+  "contractor": "COPLAN",
+  "totalUnits": 620,
+  "stages": [
+    {
+      "sheet": "TERRAPLENAGEM",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 89
+        },
+        {
+          "code": 1,
+          "label": "Platos em Execução",
+          "count": 202
+        },
+        {
+          "code": 2,
+          "label": "Platos Concluidos",
+          "count": 329
+        }
+      ],
+      "dateRange": null
+    },
+    {
+      "sheet": "RADIER",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 247
+        },
+        {
+          "code": 1,
+          "label": "Gabarito",
+          "count": 373
+        },
+        {
+          "code": 2,
+          "label": "Concretagem de Radier",
+          "count": 373
+        },
+        {
+          "code": 3,
+          "label": "Muro de Arrimo",
+          "count": 18
+        }
+      ],
+      "dateRange": {
+        "first": "2026-02-10",
+        "last": "2026-09-23",
+        "dateCells": 372
+      }
+    },
+    {
+      "sheet": "PAREDE",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 253
+        },
+        {
+          "code": 1,
+          "label": "Armação",
+          "count": 367
+        },
+        {
+          "code": 2,
+          "label": "Concretagem Parede",
+          "count": 362
+        },
+        {
+          "code": 3,
+          "label": "Concretagem de Oitão",
+          "count": 152
+        }
+      ],
+      "dateRange": {
+        "first": "2026-03-04",
+        "last": "2026-09-23",
+        "dateCells": 403
+      }
+    },
+    {
+      "sheet": "CONTRAPISO",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 428
+        },
+        {
+          "code": 1,
+          "label": "Contrapiso",
+          "count": 192
+        },
+        {
+          "code": 2,
+          "label": "Porcelanato",
+          "count": 3
+        }
+      ],
+      "dateRange": {
+        "first": "2026-07-14",
+        "last": "2026-08-19",
+        "dateCells": 55
+      }
+    },
+    {
+      "sheet": "REVESTIMENTO INICIADO",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 570
+        },
+        {
+          "code": 1,
+          "label": "Contrapiso",
+          "count": 50
+        },
+        {
+          "code": 2,
+          "label": "Porcelanato",
+          "count": 35
+        }
+      ],
+      "dateRange": null
+    },
+    {
+      "sheet": "EST. METÁLICA - COBERTURA",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": 570
+        },
+        {
+          "code": 1,
+          "label": "Estrutura Metálica",
+          "count": 50
+        },
+        {
+          "code": 2,
+          "label": "Telhado",
+          "count": 50
+        },
+        {
+          "code": 3,
+          "label": "Telhado Garagem",
+          "count": 13
+        }
+      ],
+      "dateRange": null
+    },
+    {
+      "sheet": "INSPEÇÕES",
+      "totalUnits": 620,
+      "statuses": [
+        {
+          "code": 0,
+          "label": "Não Iniciado",
+          "count": null
+        },
+        {
+          "code": 1,
+          "label": "Armação",
+          "count": null
+        },
+        {
+          "code": 2,
+          "label": "Concretagem Parede",
+          "count": null
+        },
+        {
+          "code": 3,
+          "label": "Concretagem de Oitão",
+          "count": null
+        },
+        {
+          "code": 4,
+          "label": "Verificação Pós Desforma",
+          "count": 29
+        }
+      ],
+      "dateRange": {
+        "first": "2026-03-04",
+        "last": "2026-07-03",
+        "dateCells": 152
+      }
+    }
+  ],
+  "houseConcrete": {
+    "sheet": "CASA CONCRETADA",
+    "label": "TOTAL DE PAREDES E LAJES CONCRETADAS",
+    "total": 309,
+    "byBlock": {
+      "01": 0,
+      "03": 6,
+      "04": 13,
+      "05": 21,
+      "06": 20,
+      "07": 13,
+      "08": 13,
+      "09": 13,
+      "10": 12,
+      "11": 13,
+      "12": 13,
+      "13": 13,
+      "14": 13,
+      "15": 13,
+      "16": 13,
+      "17": 13,
+      "18": 12,
+      "19": 12,
+      "20": 10,
+      "21": 13,
+      "22": 9,
+      "23": 22,
+      "24": 16,
+      "25": 13
+    },
+    "datedLots": [
+      {
+        "block": "25",
+        "lot": "01",
+        "date": "2026-03-04"
+      },
+      {
+        "block": "25",
+        "lot": "02",
+        "date": "2026-03-12"
+      },
+      {
+        "block": "25",
+        "lot": "03",
+        "date": "2026-04-04"
+      },
+      {
+        "block": "25",
+        "lot": "04",
+        "date": "2026-04-13"
+      },
+      {
+        "block": "25",
+        "lot": "05",
+        "date": "2026-04-13"
+      },
+      {
+        "block": "25",
+        "lot": "06",
+        "date": "2026-04-16"
+      },
+      {
+        "block": "25",
+        "lot": "07",
+        "date": "2026-04-18"
+      },
+      {
+        "block": "25",
+        "lot": "08",
+        "date": "2026-04-22"
+      },
+      {
+        "block": "25",
+        "lot": "09",
+        "date": "2026-04-25"
+      },
+      {
+        "block": "25",
+        "lot": "10",
+        "date": "2026-04-28"
+      },
+      {
+        "block": "25",
+        "lot": "11",
+        "date": "2026-05-01"
+      },
+      {
+        "block": "25",
+        "lot": "13",
+        "date": "2026-05-25"
+      },
+      {
+        "block": "25",
+        "lot": "14",
+        "date": "2026-05-04"
+      }
+    ]
+  }
+}

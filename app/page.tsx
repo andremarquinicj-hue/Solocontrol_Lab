@@ -37,6 +37,7 @@ import {
 } from '@/lib/work-analytics';
 import { analyzeFormRelease, resolveSpecimens } from '@/lib/technical-analysis';
 import { checkSlump, resolveProcessProfile, sampleProcessType } from '@/lib/process-profiles';
+import { pictogramForWork, villaConstructionHighlights } from '@/lib/pictogram';
 
 function formatNumber(value: number, digits = 1) {
   return value.toLocaleString('pt-BR', { maximumFractionDigits: digits });
@@ -128,6 +129,11 @@ export default function DashboardPage() {
   const volumePercent = selectedWork?.plannedVolumeM3 ? Math.min(100, (totalVolume / selectedWork.plannedVolumeM3) * 100) : undefined;
   const overall = selectedWorkId !== 'all' ? overallProgress(scoped, selectedWork) : undefined;
   const activeTeam = useMemo(() => team.filter(member => member.active), [team]);
+
+  const pictogram = useMemo(() => pictogramForWork(selectedWork), [selectedWork]);
+  const constructionHighlights = useMemo(() => villaConstructionHighlights(pictogram), [pictogram]);
+  const houseConcreteTotal = pictogram?.houseConcrete.total || 0;
+  const houseConcretePercent = pictogram?.totalUnits ? (houseConcreteTotal / pictogram.totalUnits) * 100 : undefined;
 
   const latestUpdate = useMemo(() => {
     const latest = scoped.reduce((acc, sample) => {
@@ -288,12 +294,46 @@ export default function DashboardPage() {
         <StatCard label="Sem controle" value={noControl} icon={<ShieldCheck />} tone={noControl ? 'red' : 'green'} hint={noControl ? 'clique para ver pendências' : 'nenhuma pendência histórica'} onClick={noControl ? () => setShowNoControl(true) : undefined} title={noControl ? 'Abrir registros sem controle' : undefined} />
       </section>
 
+      {pictogram && <section className="panel pictogram-progress-panel">
+        <div className="panel-header">
+          <div>
+            <span className="eyebrow">AVANÇO FÍSICO COPLAN</span>
+            <h2>Pictograma atualizado da Villa Arauco</h2>
+            <p>Base recebida em {formatDate(pictogram.receivedAt)} • {pictogram.sourceFile}</p>
+          </div>
+          <span className="status-pill good">620 unidades</span>
+        </div>
+        <div className="pictogram-highlight-grid">
+          {constructionHighlights.map(item => <div className="pictogram-highlight-card" key={item.key}>
+            <div className="pictogram-highlight-head"><span>{item.label}</span><b>{item.count} / {item.total}</b></div>
+            <div className="pictogram-progress-track"><i style={{ width: `${item.percent}%` }} /></div>
+            <small>{item.percent.toFixed(1)}% do empreendimento</small>
+          </div>)}
+          <div className="pictogram-highlight-card featured">
+            <div className="pictogram-highlight-head"><span>Paredes e lajes concretadas</span><b>{houseConcreteTotal} / {pictogram.totalUnits}</b></div>
+            <div className="pictogram-progress-track"><i style={{ width: `${houseConcretePercent ?? 0}%` }} /></div>
+            <small>{houseConcretePercent !== undefined ? `${houseConcretePercent.toFixed(1)}% do empreendimento` : '—'}</small>
+          </div>
+        </div>
+        <div className="pictogram-source-details">
+          {pictogram.stages.map(stage => <div key={stage.sheet}>
+            <b>{stage.sheet}</b>
+            <div>{stage.statuses.map(status => <span key={`${stage.sheet}-${status.code}`}>{status.label}: <strong>{status.count ?? '—'}</strong></span>)}</div>
+            {stage.dateRange&&<small>Datas registradas: {formatDate(stage.dateRange.first)} a {formatDate(stage.dateRange.last)}</small>}
+          </div>)}
+        </div>
+        <div className="pictogram-note">
+          <ShieldCheck size={18}/>
+          <span>Este bloco mostra o avanço físico informado no pictograma da COPLAN. Os indicadores de ensaios, laudos, volume e rastreabilidade Solocontrol continuam sendo calculados separadamente a partir das fichas e resultados do laboratório.</span>
+        </div>
+      </section>}
+
       <section className="executive-dashboard-grid">
         <section className="panel executive-progress-panel">
           <div className="panel-header">
             <div>
-              <h2>Painel executivo da obra</h2>
-              <p>Contagem por unidade (Quadra + Lote) para evitar duplicidade por caminhão ou nota fiscal.</p>
+              <h2>Cobertura de controle Solocontrol</h2>
+              <p>Unidades com registros de controle tecnológico no sistema, sem duplicidade por caminhão ou nota fiscal.</p>
             </div>
             <div className="executive-updated"><Clock3 size={16} /><span>Atualizado em {latestUpdate}</span></div>
           </div>
@@ -386,7 +426,7 @@ export default function DashboardPage() {
             <div className="summary-icon"><ClipboardCheck size={22} /></div>
             <p>{summaryText}</p>
             <ul>
-              <li><b>{overall !== undefined ? `${overall.toFixed(1)}%` : '—'}</b><span>progresso físico consolidado</span></li>
+              <li><b>{overall !== undefined ? `${overall.toFixed(1)}%` : '—'}</b><span>cobertura de controle consolidada</span></li>
               <li><b>{slumpAlerts.length}</b><span>alerta(s) de slump</span></li>
               <li><b>{eligibleReserveCount}</b><span>CPs 63d elegíveis para avaliação</span></li>
             </ul>
