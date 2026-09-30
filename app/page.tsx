@@ -328,6 +328,23 @@ export default function DashboardPage() {
         </div>
       </section>}
 
+      {pictogram && <section className="panel consolidated-source-panel">
+        <div className="panel-header">
+          <div>
+            <span className="eyebrow">BASE HISTÓRICA CONSOLIDADA</span>
+            <h2>Junção das informações da obra até 30/09/2026</h2>
+            <p>As fontes são combinadas sem perder a origem de cada informação e sem criar vínculos artificiais.</p>
+          </div>
+          <span className="status-pill good">Operação oficial 01/10</span>
+        </div>
+        <div className="consolidated-source-grid">
+          <div><b>PICTOGRAMA COPLAN / Letícia</b><span>Avanço físico, quadras, lotes e etapas executivas.</span><strong>Atualizado até 23/09/2026</strong></div>
+          <div><b>Controle Solocontrol</b><span>NF, concreteira, MPa, resultados de 7d/28d, AP/RP e observações.</span><strong>1.587 linhas preservadas</strong></div>
+          <div><b>Histórico espacial do sistema</b><span>Quadra/Lote, volume e laudos das concretagens já importadas.</span><strong>Vínculo automático quando seguro</strong></div>
+          <div><b>A partir de 01/10</b><span>Novas fichas passam a nascer completas diretamente no sistema.</span><strong>Sem ambiguidade futura</strong></div>
+        </div>
+      </section>}
+
       <section className="executive-dashboard-grid">
         <section className="panel executive-progress-panel">
           <div className="panel-header">

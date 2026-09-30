@@ -332,6 +332,21 @@ export async function listRuptureImports(): Promise<RuptureImportRecord[]> {
   return loadLocal<RuptureImportRecord[]>(KEYS.ruptureImports,[]);
 }
 
+export async function replaceRuptureImportsForWork(workId:string,records:RuptureImportRecord[]) {
+  const current=await listRuptureImports();
+  const linked=current.filter(item=>item.workId===workId);
+  if(firebaseConfigured&&db){
+    await ensureFirebaseUser();
+    for(let i=0;i<linked.length;i+=400){
+      const batch=writeBatch(db);
+      linked.slice(i,i+400).forEach(item=>batch.delete(doc(db!,'ruptureImports',item.id)));
+      await batch.commit();
+    }
+  }
+  saveLocal(KEYS.ruptureImports,current.filter(item=>item.workId!==workId));
+  await saveRuptureImportsBatch(records);
+}
+
 export async function saveRuptureImportsBatch(records:RuptureImportRecord[]) {
   if(firebaseConfigured&&db){
     await ensureFirebaseUser();
@@ -367,5 +382,5 @@ export async function saveUserProfile(profile:UserProfile){if(firebaseConfigured
 
 export async function getBackupSnapshot(){
   const [samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports]=await Promise.all([listSamples(),listWorks(),listTeam(),listAuditEvents(),listNonConformities(),listEquipment(),listChecklists(),listUserProfiles(),listRuptureImports()]);
-  return {generatedAt:new Date().toISOString(),version:'0.8.1',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
+  return {generatedAt:new Date().toISOString(),version:'0.9.0',samples,works,team,audit,nonConformities,equipment,checklists,users,ruptureImports};
 }

@@ -1,4 +1,5 @@
 import rawSnapshot from '@/public/data/villa-arauco-pictograma-2026-09-29.json';
+import rawMapSnapshot from '@/public/data/villa-arauco-pictograma-map-2026-09-29.json';
 import { Work } from './types';
 
 export interface PictogramStatus {
@@ -31,13 +32,40 @@ export interface VillaPictogramSnapshot {
   };
 }
 
+export interface PictogramMapBlock {
+  totalLots: number;
+  radier?: { gabarito: number; concretado: number; muroArrimo: number };
+  parede?: { armacao: number; concretada: number; oitao: number };
+}
+
+export interface VillaPictogramMapSnapshot {
+  sourceFile: string;
+  receivedAt: string;
+  totalUnits: number;
+  blocks: Record<string, PictogramMapBlock>;
+  houseConcreteByBlock: Record<string, number>;
+  exactLots: Array<{ block: string; lot: string; stage: string; date: string }>;
+  notes?: string[];
+}
+
+export type MapViewMode = 'consolidated' | 'coplan' | 'solocontrol';
+
 export const villaPictogram = rawSnapshot as VillaPictogramSnapshot;
+export const villaPictogramMap = rawMapSnapshot as VillaPictogramMapSnapshot;
 
 export function pictogramForWork(work?: Work) {
   if (!work) return undefined;
   const id = String(work.id || '').toLowerCase();
   const name = String(work.name || '').toLowerCase();
   if (id.includes('villa-arauco') || name.includes('villa arauco')) return villaPictogram;
+  return undefined;
+}
+
+export function pictogramMapForWork(work?: Work) {
+  if (!work) return undefined;
+  const id = String(work.id || '').toLowerCase();
+  const name = String(work.name || '').toLowerCase();
+  if (id.includes('villa-arauco') || name.includes('villa arauco')) return villaPictogramMap;
   return undefined;
 }
 
@@ -77,4 +105,39 @@ export function villaConstructionHighlights(snapshot: VillaPictogramSnapshot | u
       percent: pct(count, snapshot.totalUnits) ?? 0,
     };
   });
+}
+
+export function pictogramBlockProgress(snapshot: VillaPictogramMapSnapshot | undefined, block: string, element: string) {
+  if (!snapshot) return undefined;
+  const key = String(block || '').replace(/\D/g, '').padStart(2, '0');
+  const blockData = snapshot.blocks[key];
+  if (!blockData) return undefined;
+  const normalized = String(element || '').toUpperCase();
+  if (normalized.includes('RADIER')) return { completed: blockData.radier?.concretado ?? 0, total: blockData.totalLots, label: 'Radier' };
+  if (normalized.includes('OIT') || normalized.includes('PLATIBANDA')) return { completed: blockData.parede?.oitao ?? 0, total: blockData.totalLots, label: 'Oitões / Platibandas' };
+  if (normalized.includes('PAREDE') || normalized.includes('LAJE')) {
+    const completed = snapshot.houseConcreteByBlock[key] ?? blockData.parede?.concretada ?? 0;
+    return { completed, total: blockData.totalLots, label: 'Paredes / Lajes' };
+  }
+  if (normalized.includes('MURO')) return { completed: blockData.radier?.muroArrimo ?? 0, total: blockData.totalLots, label: 'Muros' };
+  return undefined;
+}
+
+export function pictogramExactLot(snapshot: VillaPictogramMapSnapshot | undefined, block: string, lot: string, element: string) {
+  if (!snapshot) return undefined;
+  const b = String(block || '').replace(/\D/g, '').padStart(2, '0');
+  const l = String(lot || '').replace(/\D/g, '').padStart(2, '0');
+  const normalized = String(element || '').toUpperCase();
+  const wall = snapshot.exactLots.find(item => item.block === b && item.lot === l && item.stage === 'PAREDES E LAJES');
+  if ((normalized.includes('PAREDE') || normalized.includes('LAJE')) && wall) return { completed: true, date: wall.date, source: 'COPLAN' as const };
+  // Uma casa com paredes/lajes concretadas necessariamente já passou pela etapa do radier.
+  if (normalized.includes('RADIER') && wall) return { completed: true, date: wall.date, source: 'COPLAN' as const, inferredFrom: 'PAREDES E LAJES' };
+  return undefined;
+}
+
+export function pictogramPreviewForElement(element: string) {
+  const normalized = String(element || '').toUpperCase();
+  if (normalized.includes('RADIER') || normalized.includes('MURO')) return '/pictograma-radier.png';
+  if (normalized.includes('PAREDE') || normalized.includes('LAJE') || normalized.includes('OIT') || normalized.includes('PLATIBANDA')) return '/pictograma-parede.png';
+  return '/pictograma-casa-concretada.png';
 }

@@ -13,12 +13,12 @@ export default function HistoricalBaselineMigration(){
     async function run(){
       try{
         setState('running');
-        setMessage('Consolidando a base histórica da Villa Arauco...');
+        setMessage('Consolidando a base histórica combinada da Villa Arauco até 30/09/2026...');
         const result=await ensureVillaAraucoHistoricalBaseline();
         if(cancelled)return;
         if(result.alreadyApplied){setState('idle');setMessage('');return;}
-        setMessage(`Base histórica consolidada: ${result.sourceRows} linhas de rupturas incorporadas e ${result.samplesArchived} fichas anteriores arquivadas. Atualizando a tela...`);
-        sessionStorage.setItem('solocontrol.baseline.v080.reloaded','1');
+        setMessage(`Base histórica combinada consolidada: ${result.sourceRows} linhas de rupturas incorporadas e ${result.samplesArchived} fichas anteriores arquivadas. Atualizando a tela...`);
+        sessionStorage.setItem('solocontrol.baseline.v090.reloaded','1');
         window.setTimeout(()=>window.location.reload(),900);
       }catch(error){
         console.error(error);

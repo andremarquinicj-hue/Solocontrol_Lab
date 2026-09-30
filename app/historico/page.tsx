@@ -74,9 +74,9 @@ export default function HistoricoPage(){
 
   async function loadBundledUpdate(){
     if(!targetWork||!isVilla)return;
-    setLoading(true);setMessage('Carregando a base final de rupturas recebida em 23/09/2026...');resetPreview();
+    setLoading(true);setMessage('Carregando a base atual de controle de CPs / rupturas recebida em 29/09/2026...');resetPreview();
     try{
-      const response=await fetch('/data/villa-arauco-rupturas-final-2026-09-23.json',{cache:'no-store'});
+      const response=await fetch('/data/villa-arauco-rupturas-final-2026-09-29.json',{cache:'no-store'});
       if(!response.ok)throw new Error('Arquivo de atualização não encontrado no pacote.');
       const payload=await response.json() as BundledRupturePayload;
       const records=bundledPayloadToRecords(payload,targetWork);
@@ -132,10 +132,10 @@ export default function HistoricoPage(){
       <div className="panel mini-kpi"><CheckCircle2/><div><span>Pendências anteriores</span><strong>{priorOperationalPending}</strong></div></div>
     </section>
 
-    {isVilla&&<section className="panel historical-baseline-banner"><div className="panel-header"><div><span className="eyebrow">MARCO OPERACIONAL</span><h2>Histórico consolidado até 27/09/2026</h2><p><strong>{historicalClosed}</strong> ficha(s) anteriores ficam arquivadas para rastreabilidade e não entram na agenda operacional. A operação diária passa a considerar novas fichas com coleta em <b>28/09/2026 ou depois</b>.</p></div><CheckCircle2/></div></section>}
+    {isVilla&&<section className="panel historical-baseline-banner"><div className="panel-header"><div><span className="eyebrow">MARCO OPERACIONAL</span><h2>Histórico consolidado até 30/09/2026</h2><p><strong>{historicalClosed}</strong> ficha(s) anteriores ficam arquivadas para rastreabilidade e não entram na agenda operacional. A operação diária passa a considerar novas fichas com coleta em <b>01/10/2026 ou depois</b>.</p></div><CheckCircle2/></div></section>}
 
     {isVilla&&<section className="panel bundled-update-card">
-      <div><span className="eyebrow">VILLA ARAUCO • BASE FINAL RECEBIDA</span><h2>Controle de CPs / rupturas incorporado ao pacote</h2><p>A versão contém as <b>1.323 linhas</b> da planilha enviada em 23/09/2026. A consolidação é executada automaticamente uma única vez no Firebase. Este botão fica disponível apenas para conferência/reprocessamento manual.</p></div>
+      <div><span className="eyebrow">VILLA ARAUCO • BASE SOLCONTROL ATUALIZADA</span><h2>Controle Solocontrol + avanço físico COPLAN consolidados</h2><p>A versão contém as <b>1.587 linhas</b> da planilha de controle de CPs / rupturas recebida em 29/09/2026 e mantém o pictograma COPLAN/Letícia como fonte separada de avanço físico. A consolidação histórica é executada automaticamente uma única vez no Firebase.</p></div>
       <button className="button secondary" onClick={loadBundledUpdate} disabled={loading}><RefreshCw size={17}/>{loading?'Processando...':'Conferir base final'}</button>
     </section>}
 

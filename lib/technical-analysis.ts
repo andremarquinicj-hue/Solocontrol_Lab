@@ -118,7 +118,7 @@ export function analyzeSample(sample: Sample, work?: Work): TechnicalAnalysis {
       controlValue, controlAverage, controlMin, controlMax, trend7toControlPct,
       reserveDecision:'not_applicable', tone:controlResults.length?'good':'neutral',
       headline:'Histórico consolidado — sem pendência operacional',
-      summary:`${resultText} O registro anterior a 28/09/2026 foi preservado para rastreabilidade e não integra a agenda operacional atual.`,
+      summary:`${resultText} O registro anterior a 01/10/2026 foi preservado para rastreabilidade e não integra a agenda operacional atual.`,
     };
   }
 
@@ -222,7 +222,7 @@ export function analyzeFormRelease(sample:Sample,work?:Work):FormReleaseAnalysis
     return {
       applicable:Boolean(planned||event),evaluationMode:profile?.formReleaseEvaluationMode||'manual',decision:'not_applicable',tone:'neutral',rupture:event,
       headline:'Histórico consolidado',
-      summary:'Registro anterior a 28/09/2026 preservado para rastreabilidade, sem ação operacional pendente.',
+      summary:'Registro anterior a 01/10/2026 preservado para rastreabilidade, sem ação operacional pendente.',
     };
   }
 

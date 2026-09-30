@@ -47,7 +47,7 @@ import {
 } from '@/lib/work-analytics';
 import { extractLots, normalizeBlock, VILLA_ARAUCO_BLOCKS } from '@/lib/villa-arauco';
 import { formatDate, ruptureAgeLabel } from '@/lib/utils';
-import { pictogramForWork, villaConstructionHighlights } from '@/lib/pictogram';
+import { MapViewMode, pictogramBlockProgress, pictogramExactLot, pictogramForWork, pictogramMapForWork, pictogramPreviewForElement, villaConstructionHighlights } from '@/lib/pictogram';
 
 type LotRef={block:string;lot:string};
 
@@ -69,6 +69,7 @@ export default function ClientPortal(){
   const [element,setElement]=useState('RADIER');
   const [selectedLot,setSelectedLot]=useState<LotRef|null>(null);
   const [reportBusy,setReportBusy]=useState<'pdf'|'share'|''>('');
+  const [mapMode,setMapMode]=useState<MapViewMode>('consolidated');
 
   useEffect(()=>{
     if(isPilot){setWorks([]);setSamples([]);setWorkId('');return}
@@ -122,6 +123,7 @@ export default function ClientPortal(){
   const unitPercent=plannedUnits?Math.min(100,(controlledUnits/plannedUnits)*100):(overall||0);
   const kpiProgress=Math.max(unitPercent||0,overall||0);
   const pictogram=useMemo(()=>pictogramForWork(work),[work]);
+  const pictogramMap=useMemo(()=>pictogramMapForWork(work),[work]);
   const constructionHighlights=useMemo(()=>villaConstructionHighlights(pictogram),[pictogram]);
   const houseConcreteTotal=pictogram?.houseConcrete.total||0;
   const displayPlannedUnits=plannedUnits||pictogram?.totalUnits||0;
@@ -199,6 +201,18 @@ export default function ClientPortal(){
   }
   function allLotRecords(block:string,lot:string){
     return data.filter(s=>normalizeBlock(s.block)===block&&extractLots(s.lot).includes(lot));
+  }
+
+  function lotMapState(block:string,lot:string){
+    const technical=records(block,lot);
+    const technicalBad=technical.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');
+    const physical=pictogramExactLot(pictogramMap,block,lot,element);
+    if(mapMode==='solocontrol') return technical.length?(technicalBad?'partial':'done'):(allLotRecords(block,lot).length?'waiting':'empty');
+    if(mapMode==='coplan') return physical?.completed?'coplan-done':'coplan-unknown';
+    if(physical?.completed&&technical.length) return technicalBad?'reconcile-attention':'reconciled';
+    if(physical?.completed&&!technical.length) return 'physical-only';
+    if(!physical?.completed&&technical.length) return technicalBad?'reconcile-attention':'technical-only';
+    return allLotRecords(block,lot).length?'technical-other':'empty';
   }
 
   const selectedLotRecords=selectedLot?allLotRecords(selectedLot.block,selectedLot.lot):[];
@@ -362,38 +376,25 @@ export default function ClientPortal(){
         <section className="client-overview-grid-v3">
           <article id="mapa" className="client-card-v3 client-map-panel-v3">
             <div className="client-section-head-v3">
-              <div><span>MAPA INTERATIVO DA OBRA</span><h3>Quadras e lotes com status visual</h3></div>
+              <div><span>MAPA INTERATIVO DA OBRA</span><h3>COPLAN + Solocontrol em uma única leitura</h3></div>
               <div className="client-map-filter-v3">
                 {['RADIER','PAREDES E LAJES','OITÕES E PLATIBANDAS','MURO DE ARRIMO'].map(e=><button key={e} className={element===e?'active':''} onClick={()=>setElement(e)}>{formatElementLabel(e)}</button>)}
               </div>
             </div>
-            <div className="client-map-legend-v3">
-              <span><i className="done"/>Concluído</span>
-              <span><i className="partial"/>Em acompanhamento</span>
-              <span><i className="waiting"/>Sem dados do elemento</span>
-              <span><i className="empty"/>Ainda sem registro</span>
-            </div>
-            {work.mapImage&&<div className="client-plan-v3"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
-            <div className="client-map-scroll-v3">
-              <div className="blocks-grid client-blocks-v3">
-                {blocks.slice(0,30).map(block=><div className="block-card-v3" key={block}>
-                  <div className="block-title-v3"><MapPinned size={14}/>Quadra {block}</div>
-                  <div className="lots-grid-v3">
-                    {Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{
-                      const rs=records(block,lot);
-                      const someActivity=allLotRecords(block,lot).length>0;
-                      const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');
-                      const tone=rs.length?(bad?'partial':'done'):(someActivity?'waiting':'empty');
-                      return <button type="button" onClick={()=>setSelectedLot({block,lot})} className={`lot-tile-v3 ${tone}`} key={lot}>{lot}</button>;
-                    })}
-                  </div>
-                </div>)}
+            {pictogramMap&&<div className="client-map-source-tabs-v3"><button className={mapMode==='consolidated'?'active':''} onClick={()=>setMapMode('consolidated')}>Visão consolidada</button><button className={mapMode==='coplan'?'active':''} onClick={()=>setMapMode('coplan')}>Pictograma COPLAN</button><button className={mapMode==='solocontrol'?'active':''} onClick={()=>setMapMode('solocontrol')}>Controle Solocontrol</button></div>}
+            {mapMode==='coplan'&&pictogramMap?<>
+              <div className="client-map-legend-v3"><span><i className="done"/>Fonte oficial COPLAN</span><span>Base recebida em {formatDate(pictogramMap.receivedAt)}</span></div>
+              <div className="client-pictogram-official-v3"><img src={pictogramPreviewForElement(element)} alt={`Pictograma COPLAN - ${formatElementLabel(element)}`}/></div>
+              <div className="client-coplan-block-grid-v3">{blocks.map(block=>{const item=pictogramBlockProgress(pictogramMap,block,element);if(!item)return null;const percent=item.total?Math.min(100,item.completed/item.total*100):0;return <div key={block}><div><b>Q{block}</b><span>{item.completed}/{item.total}</span></div><div><i style={{width:`${percent}%`}}/></div><small>{item.label} • {percent.toFixed(1)}%</small></div>})}</div>
+              <div className="client-map-source-note-v3"><ShieldCheck size={18}/><span>Este modo reproduz o avanço físico da planilha alimentada pela COPLAN. Quando o arquivo não identifica o lote individualmente, o portal apresenta a contagem oficial da quadra sem inventar associação de lote.</span></div>
+            </>:<>
+              <div className="client-map-legend-v3">
+                {mapMode==='consolidated'?<><span><i className="reconciled"/>COPLAN + Solocontrol</span><span><i className="physical-only"/>Executado COPLAN sem ficha vinculada</span><span><i className="technical-only"/>Controle Solocontrol</span><span><i className="empty"/>Sem vínculo individual</span></>:<><span><i className="done"/>Controlado</span><span><i className="partial"/>Registro parcial</span><span><i className="waiting"/>Outro elemento no lote</span><span><i className="empty"/>Sem registro</span></>}
               </div>
-            </div>
-            <div className="client-map-footer-v3">
-              <div><b>Exploração técnica por lote</b><span>Clique em qualquer lote para abrir o dossiê técnico com concretagens, resultados, gráfico de cura, fotos e PDF.</span></div>
-              <button className="button primary" onClick={()=>topLots[0]&&setSelectedLot({block:topLots[0].block,lot:topLots[0].lot})}>Abrir dossiê em destaque</button>
-            </div>
+              {work.mapImage&&<div className="client-plan-v3"><img src={work.mapImage} alt={`Planta ${work.name}`}/></div>}
+              <div className="client-map-scroll-v3"><div className="blocks-grid client-blocks-v3">{blocks.slice(0,30).map(block=>{const coplan=pictogramBlockProgress(pictogramMap,block,element);return <div className="block-card-v3" key={block}><div className="block-title-v3 client-consolidated-block-v3"><span><MapPinned size={14}/>Quadra {block}</span>{mapMode==='consolidated'&&coplan&&<small>COPLAN: <b>{coplan.completed}/{coplan.total}</b></small>}</div><div className="lots-grid-v3">{Array.from({length:work.mapMaxLot||28},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const tone=lotMapState(block,lot);const tech=records(block,lot).length;const physical=pictogramExactLot(pictogramMap,block,lot,element);return <button type="button" title={`Q${block} L${lot} • COPLAN ${physical?.completed?'confirmado no lote':'sem identificação individual'} • Solocontrol ${tech?`${tech} registro(s)`:'sem ficha vinculada'}`} onClick={()=>setSelectedLot({block,lot})} className={`lot-tile-v3 ${tone}`} key={lot}>{lot}</button>})}</div></div>})}</div></div>
+            </>}
+            <div className="client-map-footer-v3"><div><b>Exploração técnica por lote</b><span>Na visão consolidada, o cliente enxerga o avanço COPLAN e a rastreabilidade Solocontrol sem misturar ou inventar a origem dos dados.</span></div><button className="button primary" onClick={()=>topLots[0]&&setSelectedLot({block:topLots[0].block,lot:topLots[0].lot})}>Abrir dossiê em destaque</button></div>
           </article>
 
           <aside className="client-side-stack-v3">

@@ -1,120 +1,45 @@
-# Solocontrol Lab v0.8.5
+# Solocontrol Lab v0.9.1 — Base histórica consolidada até 30/09/2026
 
-Versão corretiva baseada na v0.8.0.
+Esta versão une, sem misturar as responsabilidades de cada fonte:
 
-## Correções principais
+1. **PICTOGRAMA COPLAN / Letícia** — avanço físico por etapa, quadra e lote;
+2. **Controle Solocontrol de CPs / rupturas** — identificação, concreteira, NF, data, MPa de projeto, 7d, 28d, 63d, AP/RP e observações;
+3. **Histórico espacial já existente no sistema** — Quadra/Lote, volume, laudos e dados de concretagem previamente importados.
 
-### Progresso Paredes / Lajes consolidado
+## Marco operacional
 
-As visões gerenciais não exibem mais três cartões separados para:
+- Histórico consolidado: até **30/09/2026**.
+- Operação diária oficial no sistema: a partir de **01/10/2026**.
+- Registros anteriores permanecem rastreáveis, mas não geram atrasos ou pendências operacionais retroativas.
 
-- Paredes;
-- Lajes;
-- Paredes / Lajes (histórico).
+## Base Solocontrol incorporada
 
-Agora Dashboard, Portal do Cliente e Mapa trabalham com uma única etapa gerencial:
+Arquivo recebido em 29/09/2026:
 
-`Paredes / Lajes`
+`344-QUA-For-002-R00-CONTROLE DE CPs RUPTURAS (1).xlsx`
 
-Os registros históricos `PAREDES E LAJES` e os novos registros operacionais `PAREDES` ou `LAJE` alimentam a mesma etapa de progresso.
+- **1.587 linhas** reconhecidas;
+- Parede: **683 linhas**, de 04/03/2026 a 17/06/2026;
+- Radier: **904 linhas**, de 03/02/2026 a 25/07/2026;
+- resultados de 7d/28d, AP/RP e observações são preservados conforme a fonte;
+- uma linha sem identificação, mas com NF/data, também é preservada;
+- linhas que não possam ser vinculadas com segurança a Quadra/Lote permanecem no arquivo complementar e não são forçadas no mapa.
 
-Isso elimina duplicidade sem perder a rastreabilidade operacional. Nas fichas novas, Paredes e Lajes continuam separados internamente porque possuem parâmetros próprios de slump, MPa, liberação de forma e plano de CPs.
+## Base COPLAN / Letícia
 
-### Dossiê Técnico do Lote
+A fotografia de avanço físico recebida em 29/09/2026 continua incorporada como fonte de produção da obra. Ela não substitui os dados laboratoriais e não é usada para inventar vínculos de NF com lote quando o arquivo não oferece chave suficiente.
 
-Foram consolidados os agrupamentos no:
+## Estratégia de rastreabilidade
 
-- Resumo;
-- mapa por elemento;
-- tabela-resumo do lote;
-- análise técnica;
-- Portal do Cliente.
+O sistema cruza automaticamente quando existe vínculo seguro. O que não puder ser ligado com segurança fica preservado como histórico complementar, pesquisável por data, NF, identificação, concreteira, AP/RP e observação.
 
-A tabela detalhada de concretagens continua mostrando o processo real da ficha quando ele estiver disponível, preservando a informação técnica.
-
-### Metas da obra
-
-Em `Obras`, a meta gerencial agora é cadastrada como:
-
-`Paredes / Lajes`
-
-em vez de duas metas concorrentes.
-
-Cadastros antigos que já tenham `PAREDES`, `LAJES` ou `PAREDES E LAJES` continuam compatíveis e são consolidados automaticamente.
-
-## Equipe padrão cadastrada
-
-A versão inclui os laboratoristas:
-
-- Lucas
-- Fabiano
-- Ederson
-- Rafael
-- Eduardo
-- Ismael
-- Leonardo
-- Bruno
-
-Ao abrir o sistema, `listTeam()` confere a coleção `team` do Firebase. Os nomes que ainda não existirem são cadastrados automaticamente, sem duplicar colaboradores já presentes.
-
-Todos entram inicialmente como:
-
-`Laboratorista • Ativo`
-
-A matriz de treinamento permanece disponível em `Equipe` para você definir as competências de cada um.
-
-## Compatibilidade
-
-A v0.8.5 preserva:
-
-- os 951 registros de concretagem;
-- a base histórica consolidada;
-- resultados de ruptura;
-- mapa;
-- PDF/WhatsApp;
-- Gestão do Tanque;
-- operação diária a partir de 28/09/2026;
-- Portal do Cliente;
-- auditoria e demais módulos.
-
-Não é necessário apagar ou reimportar o histórico para corrigir a duplicidade visual.
-
-## Publicação
-
-Suba somente a v0.8.5. Leia `INSTRUCOES-ATUALIZACAO-v0.8.5.md`.
+A partir de 01/10/2026, cada nova ficha deve ser lançada diretamente no sistema com Quadra, Lote, NF, concreteira, coleta/moldagem, slump, CPs, idades e fotos. Isso elimina a ambiguidade histórica dali para frente.
 
 
-## Atualização v0.8.5
-- Dashboard principal redesenhado com foco executivo/diretoria.
-- Hero gerencial, KPIs com destaque visual, painel executivo de progresso, evolução da produção, distribuição por elemento, resumo gerencial, agenda do dia e equipe do laboratório.
-- Mantidas as rotinas existentes de amostras, agenda e pendências históricas.
-
-
-## Atualização v0.8.5 — Portal do Cliente
-- Portal do Cliente redesenhado conforme o layout visual aprovado.
-- Menu lateral exclusivo para o cliente.
-- Hero da obra com cliente, executora e atualização.
-- KPIs de unidades, volume, ensaios, laudos e rastreabilidade.
-- Evolução da obra, distribuição do volume e indicadores de qualidade.
-- Mapa interativo com acesso ao dossiê técnico por lote.
-- Últimas concretagens, galeria de evidências e central de relatórios.
-- Mantida a geração/compartilhamento do relatório técnico em PDF por lote.
-
-
-## Atualização v0.8.5 — Pictograma COPLAN 29/09/2026
-
-A versão incorpora a planilha `PICTOGRAMA COPLAN VILA ARAUCO.xlsx` como fonte separada de avanço físico da obra.
-
-### Dados consolidados da planilha
-- 620 unidades previstas;
-- Terraplenagem: 329 platos concluídos, 202 em execução e 89 não iniciados;
-- Radier: 373 concretados, 373 com gabarito e 18 muros de arrimo;
-- Parede: 362 concretagens de parede e 152 concretagens de oitão;
-- Paredes/Lajes concretadas: 309 unidades;
-- Contrapiso: 192;
-- Porcelanato: 3 na aba CONTRAPISO;
-- Revestimento iniciado: 50 no estágio 1 e 35 no estágio 2 conforme a terminologia da planilha;
-- Estrutura metálica: 50; telhado: 50; telhado de garagem: 13;
-- Verificação pós-desforma: 29.
-
-O dashboard interno e o Portal do Cliente passaram a distinguir claramente **avanço físico COPLAN** de **controle tecnológico Solocontrol**.
+## v0.9.1 — Mapa conciliado COPLAN × Solocontrol
+- três modos de visualização do mapa;
+- pictograma oficial COPLAN disponível no sistema;
+- progresso por quadra extraído diretamente das abas RADIER/PAREDE;
+- visão técnica Solocontrol preservada;
+- visão consolidada com origem dos dados separada;
+- Portal do Cliente atualizado com a mesma lógica.

@@ -97,7 +97,8 @@ function rowToRecord(
 ): RuptureImportRecord | undefined {
   const identification = cleanText(row[0]);
   const concreteDate = excelDate(row[3]);
-  if (!identification || !concreteDate) return undefined;
+  const invoice = cleanText(row[2]);
+  if (!concreteDate || (!identification && !invoice)) return undefined;
 
   const results = [
     { ageDays:7, dueDate:excelDate(row[5]) || undefined, resistanceMpa:numberFromCell(row[6]) },
@@ -111,9 +112,9 @@ function rowToRecord(
     sourceFile,
     sourceSheet,
     sourceRow,
-    identification,
+    identification: identification || undefined,
     supplier: cleanText(row[1]) || undefined,
-    invoice: cleanText(row[2]) || undefined,
+    invoice: invoice || undefined,
     concreteDate,
     projectMpa: numberFromCell(row[4]),
     results,

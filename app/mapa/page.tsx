@@ -12,6 +12,7 @@ import { downloadLotTechnicalPdf, shareLotTechnicalPdf } from '@/lib/lot-report-
 import { formatDate, ruptureAgeLabel, ruptureScheduleLabel } from '@/lib/utils';
 import { formatElementLabel, normalizeElementGroup, sampleCollectionDate, sampleVolume } from '@/lib/work-analytics';
 import { processTypeLabel, sampleProcessLabel, sampleProcessType } from '@/lib/process-profiles';
+import { MapViewMode, pictogramBlockProgress, pictogramExactLot, pictogramMapForWork, pictogramPreviewForElement } from '@/lib/pictogram';
 import { extractLots, normalizeBlock, normalizeLot, VILLA_ARAUCO_BLOCKS, VILLA_ARAUCO_ELEMENTS } from '@/lib/villa-arauco';
 
 type LotRef = {block:string;lot:string};
@@ -22,12 +23,14 @@ export default function MapaPage(){
   const [selected,setSelected]=useState<LotRef|null>(null);
   const [tab,setTab]=useState<'resumo'|'concretagens'|'rompimentos'|'grafico'|'analise'>('resumo');
   const [reportBusy,setReportBusy]=useState<'pdf'|'share'|''>('');
+  const [viewMode,setViewMode]=useState<MapViewMode>('consolidated');
   const { selectedWorkId, selectedWork, works, setSelectedWorkId } = useWorkScope();
 
   useEffect(()=>{listSamples().then(setSamples)},[]);
   useEffect(()=>{setSelected(null)},[selectedWorkId]);
 
   const data=useMemo(()=>selectedWorkId==='all'?[]:samples.filter(s=>s.workId===selectedWorkId),[samples,selectedWorkId]);
+  const pictogramMap=useMemo(()=>pictogramMapForWork(selectedWork),[selectedWork]);
   const elements=useMemo(()=>{
     const present=data.map(s=>normalizeElementGroup(s.element)).filter(e=>e!=='OUTROS');
     return Array.from(new Set([...VILLA_ARAUCO_ELEMENTS,...present]));
@@ -51,6 +54,18 @@ export default function MapaPage(){
       hasLot(s,lot) &&
       (!elementFilter || normalizeElementGroup(s.element)===elementFilter)
     );
+  }
+
+  function lotVisualState(block:string,lot:string){
+    const technical=records(block,lot,element);
+    const technicalBad=technical.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');
+    const physical=pictogramExactLot(pictogramMap,block,lot,element);
+    if(viewMode==='solocontrol') return technical.length?(technicalBad?'partial':'done'):'empty';
+    if(viewMode==='coplan') return physical?.completed?'coplan-done':'coplan-unknown';
+    if(physical?.completed&&technical.length) return technicalBad?'reconcile-attention':'reconciled';
+    if(physical?.completed&&!technical.length) return 'physical-only';
+    if(!physical?.completed&&technical.length) return technicalBad?'reconcile-attention':'technical-only';
+    return 'empty';
   }
 
   const lotRecords=selected?records(selected.block,selected.lot):[];
@@ -87,18 +102,36 @@ export default function MapaPage(){
   }
 
   return <div className="page-stack">
-    <section className="page-heading"><div><span className="eyebrow">{selectedWork?.name||'OBRA'}</span><h1>Mapa de Concretagens</h1><p>Clique em qualquer lote para abrir o dossiê técnico completo.</p></div><div className="heading-actions"><Link href="/historico" className="button secondary">Importar histórico</Link><Link href="/obras" className="button ghost">Configurar obra</Link></div></section>
+    <section className="page-heading"><div><span className="eyebrow">{selectedWork?.name||'OBRA'}</span><h1>Mapa de Concretagens</h1><p>Avanço físico COPLAN + controle tecnológico Solocontrol, com rastreabilidade por quadra e lote.</p></div><div className="heading-actions"><Link href="/historico" className="button secondary">Importar histórico</Link><Link href="/obras" className="button ghost">Configurar obra</Link></div></section>
 
-    {selectedWork?.mapImage&&<section className="map-layout">
+    {pictogramMap&&<section className="panel consolidated-map-toolbar">
+      <div className="panel-header"><div><h2>Fonte do mapa</h2><p>Alterne entre o pictograma oficial da COPLAN, o controle tecnológico Solocontrol e a visão consolidada.</p></div><span className="badge muted">Base COPLAN {formatDate(pictogramMap.receivedAt)}</span></div>
+      <div className="map-source-tabs">
+        <button className={viewMode==='consolidated'?'active':''} onClick={()=>setViewMode('consolidated')}>Visão consolidada</button>
+        <button className={viewMode==='coplan'?'active':''} onClick={()=>setViewMode('coplan')}>Avanço físico COPLAN</button>
+        <button className={viewMode==='solocontrol'?'active':''} onClick={()=>setViewMode('solocontrol')}>Controle Solocontrol</button>
+      </div>
+    </section>}
+
+    {viewMode==='coplan'&&pictogramMap&&<section className="panel pictogram-map-panel">
+      <div className="panel-header"><div><h2>Pictograma oficial COPLAN</h2><p>A imagem abaixo reproduz a fonte alimentada pela equipe da COPLAN. O filtro de elemento altera a prancha exibida.</p></div><MapPinned/></div>
+      <div className="element-tabs">{elements.map(e=><button key={e} onClick={()=>setElement(e)} className={element===e?'active':''}>{formatElementLabel(e)}</button>)}</div>
+      <div className="pictogram-image-wrap"><img src={pictogramPreviewForElement(element)} alt={`Pictograma COPLAN - ${formatElementLabel(element)}`}/></div>
+      <div className="pictogram-block-summary">{blocks.map(block=>{const item=pictogramBlockProgress(pictogramMap,block,element);if(!item)return null;const percent=item.total?Math.min(100,item.completed/item.total*100):0;return <div key={block}><div><b>Q{block}</b><span>{item.completed}/{item.total}</span></div><div className="pictogram-mini-track"><i style={{width:`${percent}%`}}/></div><small>{percent.toFixed(1)}% • {item.label}</small></div>})}</div>
+      <div className="pictogram-integrity-note"><b>Importante:</b> o pictograma informa o avanço físico por quadra. A identificação lote a lote só é aplicada quando a fonte informa o lote explicitamente; o sistema não inventa vínculos.</div>
+    </section>}
+
+    {viewMode!=='coplan'&&selectedWork?.mapImage&&<section className="map-layout">
       <div className="panel plan-panel"><div className="panel-header"><div><h2>Planta de referência</h2><p>{selectedWork.name}</p></div><MapPinned/></div><img className="site-plan" src={selectedWork.mapImage} alt={`Planta ${selectedWork.name}`}/></div>
       <div className="panel map-summary"><h2>Legenda operacional</h2><div className="map-legend"><span><i className="map-dot done"></i> Possui registro</span><span><i className="map-dot partial"></i> Registro parcial / sem controle</span><span><i className="map-dot empty"></i> Sem registro neste filtro</span></div><p>O clique no lote abre concretagens, cargas, rompimentos e análise automática.</p></div>
     </section>}
 
-    <section className="panel">
-      <div className="panel-header"><div><h2>Controle por quadra e lote</h2><p>{data.length} registro(s) vinculados à obra.</p></div><span className="badge muted">{blocks.length} quadra(s)</span></div>
+    {viewMode!=='coplan'&&<section className="panel">
+      <div className="panel-header"><div><h2>{viewMode==='consolidated'?'Mapa conciliado COPLAN × Solocontrol':'Controle tecnológico Solocontrol'}</h2><p>{viewMode==='consolidated'?'O cabeçalho de cada quadra mostra o avanço informado no pictograma; os lotes mostram a rastreabilidade disponível no sistema.':`${data.length} registro(s) vinculados à obra.`}</p></div><span className="badge muted">{blocks.length} quadra(s)</span></div>
       <div className="element-tabs">{elements.map(e=><button key={e} onClick={()=>setElement(e)} className={element===e?'active':''}>{formatElementLabel(e)}</button>)}</div>
-      {blocks.length===0?<div className="empty-state"><MapPinned size={34}/><b>Sem dados de quadra/lote</b><span>Cadastre Quadra e Lote nas novas fichas ou importe o histórico.</span></div>:<div className="blocks-grid">{blocks.map(block=><div className="block-card" key={block}><div className="block-title"><Building2 size={16}/>Quadra {block}</div><div className="lots-grid">{Array.from({length:maxLot},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const rs=records(block,lot,element);const bad=rs.some(s=>s.historicalState==='sem_controle'||s.historicalState==='parcial');return <button key={lot} title={`Abrir dossiê Q${block} L${lot}`} onClick={()=>{setSelected({block,lot});setTab('resumo')}} className={`lot-tile ${rs.length?(bad?'partial':'done'):'empty'}`}>{lot}</button>})}</div></div>)}</div>}
-    </section>
+      {viewMode==='consolidated'&&<div className="consolidated-map-legend"><span><i className="reconciled"/>COPLAN + Solocontrol</span><span><i className="physical-only"/>Executado COPLAN, sem ficha vinculada</span><span><i className="technical-only"/>Controle Solocontrol, sem lote explícito no pictograma</span><span><i className="empty"/>Sem vínculo individual</span></div>}
+      {blocks.length===0?<div className="empty-state"><MapPinned size={34}/><b>Sem dados de quadra/lote</b><span>Cadastre Quadra e Lote nas novas fichas ou importe o histórico.</span></div>:<div className="blocks-grid">{blocks.map(block=>{const coplan=pictogramBlockProgress(pictogramMap,block,element);return <div className="block-card" key={block}><div className="block-title consolidated-block-title"><span><Building2 size={16}/>Quadra {block}</span>{viewMode==='consolidated'&&coplan&&<small>COPLAN: <b>{coplan.completed}/{coplan.total}</b> {coplan.label}</small>}</div><div className="lots-grid">{Array.from({length:maxLot},(_,i)=>String(i+1).padStart(2,'0')).map(lot=>{const state=lotVisualState(block,lot);const tech=records(block,lot,element).length;const physical=pictogramExactLot(pictogramMap,block,lot,element);const title=viewMode==='consolidated'?`Q${block} L${lot} • COPLAN ${physical?.completed?'confirmado no lote':'sem identificação individual'} • Solocontrol ${tech?`${tech} registro(s)`:'sem ficha vinculada'}`:`Abrir dossiê Q${block} L${lot}`;return <button key={lot} title={title} onClick={()=>{setSelected({block,lot});setTab('resumo')}} className={`lot-tile ${state}`}>{lot}</button>})}</div></div>})}</div>}
+    </section>}
 
     {selected&&lotSummary&&<div className="modal-backdrop lot-dossier-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)setSelected(null)}}>
       <section className="modal-card lot-dossier" role="dialog" aria-modal="true">

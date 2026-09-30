@@ -4,7 +4,7 @@ import {
   getSystemMigration,
   listSamples,
   listWorks,
-  saveRuptureImportsBatch,
+  replaceRuptureImportsForWork,
   saveSamplesBatch,
   saveSystemMigration,
   saveWork,
@@ -13,9 +13,9 @@ import { BundledRupturePayload, bundledPayloadToRecords, reconcileRuptureRecords
 import { Sample, Work } from './types';
 import { isVillaAraucoWork } from './process-profiles';
 
-export const HISTORICAL_BASELINE_ID='villa-arauco-historical-baseline-v080';
-export const OPERATIONAL_CUTOVER_DATE='2026-09-28';
-export const HISTORICAL_BASELINE_VERSION='v0.8.0-2026-09-23';
+export const HISTORICAL_BASELINE_ID='villa-arauco-historical-baseline-v090';
+export const OPERATIONAL_CUTOVER_DATE='2026-10-01';
+export const HISTORICAL_BASELINE_VERSION='v0.9.0-2026-09-29';
 
 export interface HistoricalBaselineResult {
   alreadyApplied:boolean;
@@ -45,7 +45,7 @@ export function isLegacyOperationalRecord(sample:Sample,workId?:string){
 export function finalizeHistoricalSample(sample:Sample):Sample{
   if(!isLegacyOperationalRecord(sample))return sample;
 
-  const now='2026-09-27T23:59:59-04:00';
+  const now='2026-09-30T23:59:59-04:00';
   const hadQualityIssue=sample.status==='nao_conformidade'
     || /\bNC[-\s]?\d|N[AÃ]O\s*CONFORM/i.test(sample.qualityObservation||'');
 
@@ -58,7 +58,7 @@ export function finalizeHistoricalSample(sample:Sample):Sample{
       status:'concluido' as const,
       historicalNoResult:true,
       historicalClosedAt:now,
-      notes:[rupture.notes,'Histórico consolidado até 27/09/2026. A fonte disponível não contém resultado para esta idade; o item foi encerrado apenas para não gerar pendência operacional retroativa.'].filter(Boolean).join('\n'),
+      notes:[rupture.notes,'Histórico consolidado até 30/09/2026. A fonte disponível não contém resultado para esta idade; o item foi encerrado apenas para não gerar pendência operacional retroativa.'].filter(Boolean).join('\n'),
     };
   });
 
@@ -75,7 +75,7 @@ export function finalizeHistoricalSample(sample:Sample):Sample{
     historicalBaselineClosed:true,
     historicalBaselineVersion:HISTORICAL_BASELINE_VERSION,
     historicalIssueNote:hadQualityIssue
-      ? 'Ocorrência histórica preservada conforme fonte. Não compõe a fila operacional iniciada em 28/09/2026.'
+      ? 'Ocorrência histórica preservada conforme fonte. Não compõe a fila operacional iniciada em 01/10/2026.'
       : sample.historicalIssueNote,
     ruptures,
     updatedAt:new Date().toISOString(),
@@ -142,11 +142,11 @@ export async function ensureVillaAraucoHistoricalBaseline():Promise<HistoricalBa
     reserveReleaseThresholdPct:existingWork?.reserveReleaseThresholdPct || 100,
     reserveReleaseEnabled:existingWork?.reserveReleaseEnabled!==false,
     clientPortalEnabled:existingWork?.clientPortalEnabled!==false,
-    operationalStartDate:existingWork?.operationalStartDate || OPERATIONAL_CUTOVER_DATE,
+    operationalStartDate:OPERATIONAL_CUTOVER_DATE,
   };
   await saveWork(work);
 
-  const response=await fetch('/data/villa-arauco-rupturas-final-2026-09-23.json',{cache:'no-store'});
+  const response=await fetch('/data/villa-arauco-rupturas-final-2026-09-29.json',{cache:'no-store'});
   if(!response.ok)throw new Error('Não foi possível carregar a base histórica consolidada de rupturas.');
   const payload=await response.json() as BundledRupturePayload;
   const sourceRecords=bundledPayloadToRecords(payload,work);
@@ -158,7 +158,7 @@ export async function ensureVillaAraucoHistoricalBaseline():Promise<HistoricalBa
     .map(sample=>finalizeHistoricalSample(updatedById.get(sample.id) || sample));
 
   if(historicalSamples.length)await saveSamplesBatch(historicalSamples);
-  await saveRuptureImportsBatch(reconciliation.records);
+  await replaceRuptureImportsForWork(work.id,reconciliation.records);
 
   const complementaryRows=reconciliation.summary.unmatchedRows+reconciliation.summary.ambiguousRows;
   const summary={
